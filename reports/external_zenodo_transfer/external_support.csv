@@ -1,0 +1,3 @@
+experiment,vent_s,windows,positive,negative,positive_fraction,max_retained_temperature_c
+NMC111,10260,624,0,624,0.0,119.88400268554688
+NMC811,1350,59,39,20,0.6610169491525424,119.49785614013672
