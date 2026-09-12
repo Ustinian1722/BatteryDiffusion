@@ -1,2 +1,17 @@
 path,suffix,bytes,rows,columns,error
-data/raw/osf_c2hnq/Dataset_TR.zip,.zip,2184444,,,
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Cell/NMC 2170/Aged/C1_Pressure.xlsx,.xlsx,93218,,,
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Cell/NMC 2170/Aged/C1_Temperature.xlsx,.xlsx,51218,,,
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Cell/NMC 2170/Aged/C2_Pressure.xlsx,.xlsx,49798,,,
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Cell/NMC 2170/Aged/C2_Temperature.xlsx,.xlsx,93348,,,
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Cell/NMC 2170/Fresh/B1_Temperature.xlsx,.xlsx,56102,,,
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Cell/NMC 2170/Fresh/B2_Pressure.xlsx,.xlsx,204439,,,
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Cell/NMC 2170/Fresh/B2_Temperature.xlsx,.xlsx,108245,,,
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Cell/NMC pouch/Aged/D1_Pressure.xlsx,.xlsx,178431,,,
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Cell/NMC pouch/Aged/D1_Temperature.xlsx,.xlsx,148040,,,
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Cell/NMC pouch/Fresh/A1_Temperature.xlsx,.xlsx,144621,,,
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Cell/NMC pouch/Fresh/A2_Force.xlsx,.xlsx,164718,,,
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Cell/NMC pouch/Fresh/A2_Temperature.xlsx,.xlsx,144516,,,
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Module/NMC pouch/Aged/M2_Force.csv,.csv,65316,3875,"[""1"", ""450.569832""]",encoding=utf-8-sig
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Module/NMC pouch/Aged/M2_Temperature.csv,.csv,2014011,23589,"[""ms"", ""degC"", ""degC"", ""degC"", ""degC"", ""degC"", ""degC"", ""degC"", ""degC"", ""degC"", ""degC"", ""degC"", ""degC"", ""degC"", ""degC"", ""degC""]",encoding=utf-8-sig
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Module/NMC pouch/Fresh/M1_Force.csv,.csv,80618,4965,"[""1"", ""476.528924""]",encoding=utf-8-sig
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Module/NMC pouch/Fresh/M1_Temperature.csv,.csv,1847979,22069,"[""ms"", ""degC"", ""degC"", ""degC"", ""degC"", ""degC"", ""degC"", ""degC"", ""degC"", ""degC"", ""degC"", ""degC"", ""degC"", ""degC"", ""degC"", ""degC""]",encoding=utf-8-sig

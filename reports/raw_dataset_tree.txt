@@ -1,1 +1,16 @@
-data/raw/osf_c2hnq/Dataset_TR.zip
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Cell/NMC 2170/Aged/C1_Pressure.xlsx
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Cell/NMC 2170/Aged/C1_Temperature.xlsx
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Cell/NMC 2170/Aged/C2_Pressure.xlsx
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Cell/NMC 2170/Aged/C2_Temperature.xlsx
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Cell/NMC 2170/Fresh/B1_Temperature.xlsx
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Cell/NMC 2170/Fresh/B2_Pressure.xlsx
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Cell/NMC 2170/Fresh/B2_Temperature.xlsx
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Cell/NMC pouch/Aged/D1_Pressure.xlsx
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Cell/NMC pouch/Aged/D1_Temperature.xlsx
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Cell/NMC pouch/Fresh/A1_Temperature.xlsx
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Cell/NMC pouch/Fresh/A2_Force.xlsx
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Cell/NMC pouch/Fresh/A2_Temperature.xlsx
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Module/NMC pouch/Aged/M2_Force.csv
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Module/NMC pouch/Aged/M2_Temperature.csv
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Module/NMC pouch/Fresh/M1_Force.csv
+data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Module/NMC pouch/Fresh/M1_Temperature.csv
