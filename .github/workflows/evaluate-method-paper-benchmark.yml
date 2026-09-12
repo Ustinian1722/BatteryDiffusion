@@ -1,0 +1,106 @@
+name: Evaluate method-paper TR prognostic models
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'reports/method_paper_target_freeze_v1.md'
+      - 'scripts/evaluate_method_paper_benchmark.py'
+      - 'scripts/run_method_paper_fold.py'
+      - '.github/workflows/evaluate-method-paper-benchmark.yml'
+
+permissions:
+  contents: write
+
+env:
+  PYTHONUNBUFFERED: '1'
+
+jobs:
+  fold:
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        held: [TS0330A, TS0330B, TS0330C, TS0330D, TS0330E, TS0330F, TS0330G, TS0330H]
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pandas requests remotezip openpyxl scikit-learn
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Run frozen real-only architecture fold
+        run: |
+          mkdir -p out
+          python scripts/run_method_paper_fold.py --heldout ${{ matrix.held }} --out out/${{ matrix.held }}.csv
+      - uses: actions/upload-artifact@v4
+        with:
+          name: method-paper-${{ matrix.held }}
+          path: out/
+          retention-days: 3
+
+  aggregate:
+    needs: fold
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install pandas numpy
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: method-paper-*
+          path: collected
+          merge-multiple: true
+      - name: Aggregate by held-out destructive experiment
+        run: |
+          rm -rf reports/method_paper_benchmark_v1
+          mkdir -p reports/method_paper_benchmark_v1/fold_audits
+          cp collected/*.json reports/method_paper_benchmark_v1/fold_audits/
+          python - <<'PY'
+          from pathlib import Path
+          import itertools
+          import numpy as np
+          import pandas as pd
+          src=Path('collected'); out=Path('reports/method_paper_benchmark_v1')
+          fs=sorted(p for p in src.glob('TS0330?.csv') if not p.name.endswith('_predictions.csv'))
+          df=pd.concat([pd.read_csv(p) for p in fs],ignore_index=True); df.to_csv(out/'fold_seed_metrics.csv',index=False)
+          pf=sorted(src.glob('*_predictions.csv')); pd.concat([pd.read_csv(p) for p in pf],ignore_index=True).to_csv(out/'predictions.csv',index=False)
+          fold=df.groupby(['heldout','model']).agg(mae_s=('mae_s','mean'),mae_sd=('mae_s','std'),rmse_s=('rmse_s','mean'),medae_s=('medae_s','mean'),r2=('r2','mean'),params=('params','first'),epochs=('epochs','mean')).reset_index(); fold.to_csv(out/'heldout_metrics.csv',index=False)
+          macro=fold.groupby('model').agg(mae_mean_s=('mae_s','mean'),mae_worst_s=('mae_s','max'),rmse_mean_s=('rmse_s','mean'),medae_mean_s=('medae_s','mean'),r2_mean=('r2','mean'),params=('params','first'),epochs_mean=('epochs','mean')).reset_index().sort_values('mae_mean_s'); macro.to_csv(out/'macro_metrics.csv',index=False)
+          # Paired experiment-level comparisons of Proposed against every baseline.
+          piv=fold.pivot(index='heldout',columns='model',values='mae_s'); rows=[]; rng=np.random.default_rng(20260912)
+          for b in [c for c in piv.columns if c!='lath_net']:
+              d=(piv[b]-piv['lath_net']).to_numpy(float)  # positive = proposed lower MAE
+              boots=np.array([rng.choice(d,size=len(d),replace=True).mean() for _ in range(20000)])
+              vals=np.array([np.mean(d*np.asarray(s)) for s in itertools.product((-1.,1.),repeat=len(d))]); obs=abs(d.mean())
+              rows.append({'contrast':f'lath_net_vs_{b}','mae_advantage_s':d.mean(),'ci_low_s':np.percentile(boots,2.5),'ci_high_s':np.percentile(boots,97.5),'proposed_better_experiments':int((d>0).sum()),'n_experiments':len(d),'exact_signflip_p':float(np.mean(np.abs(vals)>=obs-1e-12))})
+          stats=pd.DataFrame(rows); stats.to_csv(out/'paired_mae_stats.csv',index=False)
+          lines=['# Method-paper benchmark v1','',
+          'Primary architecture benchmark is **real-only** for every model. Each of the eight TS0330 destructive tests is held out once; the next test cyclically is validation and the remaining six train the model. Input is the same 120 s causal temperature+pressure history; target is 0<time-to-first-`vent_gas`<=600 s, with max input temperature <=150 C. Three frozen seeds are averaged within each held-out experiment.','',
+          '| model | mean MAE | worst MAE | mean RMSE | mean MedAE | mean R2 | params |','|---|---:|---:|---:|---:|---:|---:|']
+          for _,r in macro.iterrows(): lines.append(f"| {r.model} | {r.mae_mean_s:.1f}s | {r.mae_worst_s:.1f}s | {r.rmse_mean_s:.1f}s | {r.medae_mean_s:.1f}s | {r.r2_mean:.3f} | {int(r.params):,} |")
+          lines += ['', '## Proposed-vs-baseline paired MAE','', '| contrast | mean MAE advantage | 95% bootstrap CI | better experiments | sign-flip p |','|---|---:|---:|---:|---:|']
+          for _,r in stats.iterrows(): lines.append(f"| {r.contrast} | {r.mae_advantage_s:+.1f}s | [{r.ci_low_s:+.1f}, {r.ci_high_s:+.1f}] | {int(r.proposed_better_experiments)}/{int(r.n_experiments)} | {r.exact_signflip_p:.4f} |")
+          lines += ['', '## Guardrail','', 'RA-CDiff is excluded from this table by design. This table tests the **model contribution** only. Synthetic augmentation will be attached later as a secondary experiment after architecture/ablation are frozen. Statistical n is eight independent experiments, never the number of windows.']
+          (out/'README.md').write_text('\n'.join(lines)+'\n',encoding='utf-8'); print('\n'.join(lines))
+          PY
+      - name: Commit benchmark results
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/method_paper_benchmark_v1
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'research: add real-only method-paper architecture benchmark'
+          git pull --rebase origin main
+          git push origin HEAD:main
