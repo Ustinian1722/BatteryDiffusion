@@ -1,0 +1,159 @@
+name: Evaluate frozen Zenodo scarcity transfer
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/prepare_virtual_vehicle_source_pair.py'
+      - 'scripts/evaluate_external_zenodo_transfer_pair.py'
+      - 'reports/external_zenodo_transfer_protocol_freeze.md'
+      - '.github/workflows/evaluate-external-zenodo-scarcity-transfer.yml'
+
+permissions:
+  contents: write
+
+env:
+  PYTHONUNBUFFERED: '1'
+
+jobs:
+  pair:
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        include:
+          - {tag: AB, t1: TS0330A, t2: TS0330B, seed: 7101}
+          - {tag: BC, t1: TS0330B, t2: TS0330C, seed: 7102}
+          - {tag: CD, t1: TS0330C, t2: TS0330D, seed: 7103}
+          - {tag: DE, t1: TS0330D, t2: TS0330E, seed: 7104}
+          - {tag: EF, t1: TS0330E, t2: TS0330F, seed: 7105}
+          - {tag: FG, t1: TS0330F, t2: TS0330G, seed: 7106}
+          - {tag: GH, t1: TS0330G, t2: TS0330H, seed: 7107}
+          - {tag: HA, t1: TS0330H, t2: TS0330A, seed: 7108}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pandas requests remotezip openpyxl scikit-learn scipy
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Prepare source pair only
+        run: |
+          mkdir -p work/ext/${{ matrix.tag }}/fold out
+          python scripts/prepare_virtual_vehicle_source_pair.py \
+            --train ${{ matrix.t1 }} ${{ matrix.t2 }} \
+            --out work/ext/${{ matrix.tag }}/fold
+      - name: Fit source-only RA-CDiff
+        run: |
+          python scripts/train_diffusion_v3_anchored.py \
+            --input work/ext/${{ matrix.tag }}/fold/train_generator.npz \
+            --out work/ext/${{ matrix.tag }}/syn \
+            --steps 600 --diffusion-steps 100 --batch-size 64 --hidden 24 \
+            --candidates 160 --noise-min 0.08 --noise-max 0.25 \
+            --seed ${{ matrix.seed }}
+      - name: Preserve source anchors and score untouched external tests
+        run: |
+          python scripts/filter_virtual_vehicle_synthetic_with_anchors.py \
+            --synthetic work/ext/${{ matrix.tag }}/syn/synthetic_windows.npz \
+            --train-real work/ext/${{ matrix.tag }}/fold/train_real.npz \
+            --out work/ext/${{ matrix.tag }}/syn_task.npz \
+            --seed ${{ matrix.seed }} --temp-cap 150
+          python scripts/evaluate_external_zenodo_transfer_pair.py \
+            --fold-dir work/ext/${{ matrix.tag }}/fold \
+            --synthetic work/ext/${{ matrix.tag }}/syn_task.npz \
+            --out out/${{ matrix.tag }}.csv --seed ${{ matrix.seed }}
+          cp work/ext/${{ matrix.tag }}/fold/summary.json out/${{ matrix.tag }}_fold.json
+          cp work/ext/${{ matrix.tag }}/syn/report.json out/${{ matrix.tag }}_generator.json
+          cp work/ext/${{ matrix.tag }}/syn_task.json out/${{ matrix.tag }}_filter.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ext-scarcity-${{ matrix.tag }}
+          path: out/
+          retention-days: 2
+
+  aggregate:
+    needs: pair
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install pandas numpy
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ext-scarcity-*
+          path: collected
+          merge-multiple: true
+      - name: Aggregate without inflating external n
+        run: |
+          rm -rf reports/external_zenodo_scarcity_transfer
+          mkdir -p reports/external_zenodo_scarcity_transfer/fold_audits
+          cp collected/*_fold.json collected/*_generator.json collected/*_filter.json reports/external_zenodo_scarcity_transfer/fold_audits/
+          python - <<'PY'
+          from pathlib import Path
+          import pandas as pd
+
+          src=Path('collected'); out=Path('reports/external_zenodo_scarcity_transfer')
+          files=sorted(p for p in src.glob('*.csv') if not p.name.endswith('_predictions.csv'))
+          df=pd.concat([pd.read_csv(p) for p in files],ignore_index=True)
+          df.to_csv(out/'all_source_pair_metrics.csv',index=False)
+          per_ext=df.groupby(['external','method','representation']).agg(
+              source_pair_count=('source_pair','size'),
+              auroc_mean_over_source_pairs=('auroc','mean'),auroc_worst_source_pair=('auroc','min'),
+              auprc_mean_over_source_pairs=('auprc','mean'),auprc_worst_source_pair=('auprc','min'),
+              f1_mean_over_source_pairs=('f1','mean'),balanced_acc_mean_over_source_pairs=('balanced_accuracy','mean')).reset_index()
+          per_ext.to_csv(out/'per_external_summary.csv',index=False)
+          macro=per_ext.groupby(['method','representation']).agg(
+              external_n=('external','nunique'),
+              auroc_external_macro=('auroc_mean_over_source_pairs','mean'),
+              auroc_worst_external=('auroc_mean_over_source_pairs','min'),
+              auprc_external_macro=('auprc_mean_over_source_pairs','mean'),
+              auprc_worst_external=('auprc_mean_over_source_pairs','min'),
+              f1_external_macro=('f1_mean_over_source_pairs','mean')).reset_index()
+          macro.to_csv(out/'external_macro.csv',index=False)
+
+          pivot=per_ext.pivot(index=['external','representation'],columns='method',values=['auroc_mean_over_source_pairs','auprc_mean_over_source_pairs']).reset_index()
+          deltas=[]
+          for _,r in pivot.iterrows():
+              for method in ('racdiff','classical_anchor_matched'):
+                  rec={'external':r[('external','')],'representation':r[('representation','')],'method':method}
+                  for met in ('auroc_mean_over_source_pairs','auprc_mean_over_source_pairs'):
+                      rec['delta_'+met]=float(r[(met,method)]-r[(met,'real_only')])
+                  deltas.append(rec)
+          pd.DataFrame(deltas).to_csv(out/'descriptive_external_deltas.csv',index=False)
+
+          lines=['# Frozen scarcity transfer to Zenodo 13981390','',
+                 'Two real prismatic NMC experiments (NMC111 and NMC811) are untouched external/domain-shift tests. Eight predeclared two-experiment Virtual Vehicle source pairs are used only to quantify sensitivity to which scarce source experiments are available. External data do not enter scaling, RA-CDiff fitting, augmentation screening, classifier fitting, task definition or threshold selection.','',
+                 'The primary cross-domain representation (`fusion_shape`) was frozen before scoring because pressure offset/gain can differ across apparatus.','',
+                 '## External-experiment macro summary','',
+                 '| method | representation | mean AUROC | worst external AUROC | mean AUPRC | worst external AUPRC |','|---|---|---:|---:|---:|---:|']
+          for _,r in macro.sort_values(['representation','method']).iterrows():
+              lines.append(f"| {r.method} | {r.representation} | {r.auroc_external_macro:.3f} | {r.auroc_worst_external:.3f} | {r.auprc_external_macro:.3f} | {r.auprc_worst_external:.3f} |")
+          lines += ['', '## Primary representation by external experiment','',
+                    '| external | method | mean AUROC over 8 source pairs | worst source-pair AUROC | mean AUPRC | worst source-pair AUPRC |','|---|---|---:|---:|---:|---:|']
+          prim=per_ext[per_ext.representation=='fusion_shape']
+          for _,r in prim.sort_values(['external','method']).iterrows():
+              lines.append(f"| {r.external} | {r.method} | {r.auroc_mean_over_source_pairs:.3f} | {r.auroc_worst_source_pair:.3f} | {r.auprc_mean_over_source_pairs:.3f} | {r.auprc_worst_source_pair:.3f} |")
+          lines += ['', '## Guardrail','',
+                    'The independent external sample size is n=2. Eight source-pair fits are nuisance/sensitivity replications, not additional external experiments. No inferential significance test is reported and no external result is used to retune the frozen task or representation.']
+          (out/'README.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
+          print('\n'.join(lines))
+          PY
+      - name: Commit scarcity-transfer result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/external_zenodo_scarcity_transfer
+          git commit -m 'research: evaluate frozen Zenodo scarcity transfer'
+          git pull --rebase origin main
+          git push origin HEAD:main
