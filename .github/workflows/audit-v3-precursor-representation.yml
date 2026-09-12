@@ -1,0 +1,37 @@
+name: Audit v3 precursor representation
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/audit_v3_precursor_representation.py'
+      - '.github/workflows/audit-v3-precursor-representation.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy pandas requests remotezip openpyxl scikit-learn
+      - name: Run representation audit
+        run: python scripts/audit_v3_precursor_representation.py --out reports/v3_precursor_representation_audit
+      - name: Commit audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git pull --rebase origin main
+          git add reports/v3_precursor_representation_audit
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'research: add v3 precursor representation audit'
+          git push origin HEAD:main
