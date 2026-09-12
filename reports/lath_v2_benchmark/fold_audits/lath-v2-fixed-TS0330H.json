@@ -1,0 +1,33 @@
+{
+  "heldout": "TS0330H",
+  "validation": "TS0330A",
+  "train_experiments": [
+    "TS0330B",
+    "TS0330C",
+    "TS0330D",
+    "TS0330E",
+    "TS0330F",
+    "TS0330G"
+  ],
+  "seeds": [
+    2026,
+    2027,
+    2028
+  ],
+  "window_s": 120,
+  "stride_s": 10,
+  "max_tau_s": 600.0,
+  "temp_cap_c": 150.0,
+  "hazard_bins": 40,
+  "bin_width_s": 15.0,
+  "lags_s": [
+    0,
+    2,
+    5,
+    10,
+    20,
+    30
+  ],
+  "scaler_fit": "training experiments only",
+  "selection": "early stopping on one validation experiment only"
+}
