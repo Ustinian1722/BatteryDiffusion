@@ -1,0 +1,90 @@
+name: Diffusion augmentation v3 anchored
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/train_diffusion_v3_anchored.py'
+      - '.github/workflows/augmentation-v3-anchored.yml'
+
+concurrency:
+  group: augmentation-v3-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  augment-v3:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pandas openpyxl
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Refresh prepared windows
+        run: |
+          rm -rf data/processed/augmentation_v1
+          python scripts/prepare_aug_windows.py \
+            --root data/raw/osf_c2hnq \
+            --out data/processed/augmentation_v1 \
+            --window 256 --stride 64
+
+      - name: Train anchored diffusion and augment
+        run: |
+          rm -rf data/synthetic/v3_anchored_cell_2170
+          python scripts/train_diffusion_v3_anchored.py \
+            --input data/processed/augmentation_v1/cell_2170_temp_pressure.npz \
+            --out data/synthetic/v3_anchored_cell_2170 \
+            --steps 1200 \
+            --diffusion-steps 100 \
+            --batch-size 64 \
+            --hidden 32 \
+            --candidates 360 \
+            --noise-min 0.20 \
+            --noise-max 0.50 \
+            --seed 2026
+          cat data/synthetic/v3_anchored_cell_2170/report.md
+
+      - name: Evaluate accepted v3 samples
+        run: |
+          rm -rf reports/augmentation_quality_v3
+          python scripts/evaluate_augmentation_quality.py \
+            --real data/processed/augmentation_v1/cell_2170_temp_pressure.npz \
+            --synthetic data/synthetic/v3_anchored_cell_2170/synthetic_windows.npz \
+            --quality-csv data/synthetic/v3_anchored_cell_2170/synthetic_quality.csv \
+            --pilot-json data/synthetic/v3_anchored_cell_2170/report.json \
+            --out reports/augmentation_quality_v3
+          cat reports/augmentation_quality_v3/augmentation_quality.md
+
+      - name: Remove checkpoint before commit
+        run: rm -f data/synthetic/v3_anchored_cell_2170/model.pt
+
+      - name: Commit v3 outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/processed/augmentation_v1 data/synthetic/v3_anchored_cell_2170 reports/augmentation_quality_v3
+          if git diff --cached --quiet; then
+            echo 'No v3 changes to commit.'
+            exit 0
+          fi
+          git commit -m 'data: add real-anchored diffusion v3 augmentation'
+          git pull --rebase origin main
+          git push origin HEAD:main
