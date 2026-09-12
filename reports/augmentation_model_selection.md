@@ -8,7 +8,15 @@ The independent experimental unit remains the TR experiment ID. Synthetic window
 
 ## Data state
 
-The downloaded OSF archive currently exposes 9 experiment IDs and 16 signal files, of which 7 IDs have temperature + mechanical modalities. The 2170 paired pilot cohort contains 174 aligned windows from B2, C1 and C2. The pouch-cell paired cohort contains 215 windows from A2 and D1, but D1's mechanical file requires a separate anomaly/nomenclature audit before it is used for generative training. Module temperature streams also use a different multi-thermocouple time representation and are intentionally deferred to a dedicated alignment step.
+The downloaded OSF archive currently exposes 9 experiment IDs and 16 signal files, of which 7 IDs have temperature + mechanical modalities. The 2170 paired pilot cohort contains 174 aligned windows from B2, C1 and C2.
+
+A focused audit of the remaining mechanical channels shows that they should **not** be mixed into the current generator without additional preprocessing/verification:
+
+- `D1_Pressure.xlsx`: 9244 rows, 64 missing mechanical values, 1450 values with |value| > 2000, q99 ≈ 9151.21, and a long tail whose values rise to about 9243. This is inconsistent with the earlier physical range and is treated as a corrupted/time-like segment until verified.
+- `A2_Force.xlsx`: 2741 missing values; the valid force record is incomplete even though its remaining range is physically plausible for the pouch experiment.
+- `M1_Force.csv` and `M2_Force.csv`: mechanically clean in the current audit, but the corresponding module temperature files contain 15 thermocouple channels and a repeating millisecond field rather than the same simple elapsed-time representation. They require a dedicated time reconstruction/alignment step so the spatial temperature information is not destroyed prematurely.
+
+Therefore, the current augmentation freeze is deliberately based on the physically homogeneous and auditable 2170 temperature+pressure cohort. Pouch/module data are preserved raw and deferred rather than silently cleaned or merged.
 
 ## Generator iterations
 
@@ -53,8 +61,8 @@ The stage labels are **shape labels**, not venting ground truth.
 
 Before choosing a downstream task, the next research step is to finish augmentation coverage/auditing for the remaining cohorts:
 
-- audit and clean the pouch-cell D1 mechanical channel before training a pouch cohort generator;
-- align the module multi-thermocouple temperature stream with force;
+- verify/clean only defensible contiguous portions of the pouch mechanical recordings, keeping `Force`/`Pressure` nomenclature explicit instead of assuming they are identical;
+- reconstruct module elapsed time and align the 15 thermocouple channels with force without collapsing the spatial signal prematurely;
 - run the same RA-CDiff quality audit separately for each physically homogeneous cohort;
 - only then compare candidate applications using what the augmented data can actually support.
 
