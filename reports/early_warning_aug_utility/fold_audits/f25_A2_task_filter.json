@@ -1,0 +1,14 @@
+{
+  "input_accepted_generic": 159,
+  "accepted_task_guard": 156,
+  "rejected_task_guard": 3,
+  "temp_cap_c": 120.0,
+  "temp_min_c": -20.0,
+  "positive": 77,
+  "negative": 79,
+  "anchor_experiments": [
+    "D1",
+    "M1",
+    "M2"
+  ]
+}

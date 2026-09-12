@@ -1,0 +1,88 @@
+{
+  "version": "v3_real_anchored_cosine",
+  "device": "cpu",
+  "real_windows": 60,
+  "independent_experiment_ids": [
+    "A2",
+    "D1",
+    "M2"
+  ],
+  "training_steps": 600,
+  "diffusion_steps": 100,
+  "noise_t_range": [
+    8,
+    25
+  ],
+  "candidate_synthetic_windows": 160,
+  "accepted_synthetic_windows": 157,
+  "acceptance_rate": 0.98125,
+  "condition_group_counts": [
+    {
+      "age": 0,
+      "stage": 0,
+      "count": 40,
+      "sum": 37
+    },
+    {
+      "age": 0,
+      "stage": 1,
+      "count": 40,
+      "sum": 40
+    },
+    {
+      "age": 1,
+      "stage": 0,
+      "count": 40,
+      "sum": 40
+    },
+    {
+      "age": 1,
+      "stage": 1,
+      "count": 40,
+      "sum": 40
+    }
+  ],
+  "quality_thresholds": {
+    "age0_stage0": {
+      "n_real_exact_condition": 16,
+      "n_real_reference": 16,
+      "feature_z_max": 5.0,
+      "nearest_real_min": 0.011181210726499559,
+      "nearest_real_max": 0.6708726435899734,
+      "real_real_nn_median": 0.05590605363249779,
+      "real_real_nn_p95": 0.10543312132358551,
+      "max_abs_normalized": 3.5
+    },
+    "age0_stage1": {
+      "n_real_exact_condition": 6,
+      "n_real_reference": 6,
+      "feature_z_max": 5.0,
+      "nearest_real_min": 0.014898100495338441,
+      "nearest_real_max": 0.8,
+      "real_real_nn_median": 0.0744905024766922,
+      "real_real_nn_p95": 0.10103157162666321,
+      "max_abs_normalized": 3.5
+    },
+    "age1_stage0": {
+      "n_real_exact_condition": 24,
+      "n_real_reference": 24,
+      "feature_z_max": 5.0,
+      "nearest_real_min": 0.01372547447681427,
+      "nearest_real_max": 0.8,
+      "real_real_nn_median": 0.06862737238407135,
+      "real_real_nn_p95": 0.07799108326435089,
+      "max_abs_normalized": 3.5
+    },
+    "age1_stage1": {
+      "n_real_exact_condition": 14,
+      "n_real_reference": 14,
+      "feature_z_max": 5.0,
+      "nearest_real_min": 0.01770409643650055,
+      "nearest_real_max": 0.8,
+      "real_real_nn_median": 0.08852048218250275,
+      "real_real_nn_p95": 0.11959293484687805,
+      "max_abs_normalized": 3.5
+    }
+  },
+  "important_caveat": "Real-anchored synthetic windows are local augmentation variants, not new independent TR experiments."
+}

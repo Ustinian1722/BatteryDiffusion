@@ -1,0 +1,18 @@
+{
+  "heldout": "M1",
+  "train_fraction": 1.0,
+  "train_experiments": [
+    "A2",
+    "D1",
+    "M2"
+  ],
+  "train_windows": 245,
+  "train_positive": 82,
+  "test_windows": 140,
+  "test_positive": 41,
+  "window_s": 256,
+  "stride_s": 10,
+  "horizon_s": 900,
+  "temp_cap_c": 120.0,
+  "scaler_fit": "selected real training windows only"
+}

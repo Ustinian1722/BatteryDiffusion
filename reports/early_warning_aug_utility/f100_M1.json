@@ -1,0 +1,8 @@
+{
+  "heldout": "M1",
+  "train_fraction": 1.0,
+  "real_train": 245,
+  "test_real": 140,
+  "racdiff_aug": 157,
+  "classical_aug": 157
+}
