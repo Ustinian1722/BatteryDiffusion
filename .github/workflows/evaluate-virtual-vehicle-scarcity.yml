@@ -1,0 +1,41 @@
+name: Evaluate Virtual Vehicle experiment scarcity
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/evaluate_virtual_vehicle_scarcity.py'
+      - 'reports/virtual_vehicle_scarcity_protocol_freeze.md'
+      - '.github/workflows/evaluate-virtual-vehicle-scarcity.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: python -m pip install numpy pandas requests remotezip openpyxl scikit-learn
+      - name: Run exhaustive real-experiment scarcity audit
+        run: |
+          rm -rf reports/virtual_vehicle_scarcity
+          python scripts/evaluate_virtual_vehicle_scarcity.py --out reports/virtual_vehicle_scarcity
+      - name: Commit scarcity results
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/virtual_vehicle_scarcity
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'research: add exhaustive Virtual Vehicle scarcity audit'
+          git pull --rebase origin main
+          git push origin HEAD:main
