@@ -1,0 +1,172 @@
+name: Evaluate fold-safe Virtual Vehicle RA-CDiff augmentation
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/prepare_virtual_vehicle_aug_fold.py'
+      - 'scripts/filter_virtual_vehicle_synthetic.py'
+      - 'scripts/evaluate_virtual_vehicle_aug_fold.py'
+      - 'reports/virtual_vehicle_augmentation_protocol_freeze.md'
+      - '.github/workflows/evaluate-virtual-vehicle-augmentation.yml'
+
+permissions:
+  contents: write
+
+env:
+  PYTHONUNBUFFERED: '1'
+
+jobs:
+  fold:
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        include:
+          - {tag: A_BC, held: TS0330A, t1: TS0330B, t2: TS0330C, seed: 4101}
+          - {tag: A_DE, held: TS0330A, t1: TS0330D, t2: TS0330E, seed: 4102}
+          - {tag: A_FG, held: TS0330A, t1: TS0330F, t2: TS0330G, seed: 4103}
+          - {tag: B_CD, held: TS0330B, t1: TS0330C, t2: TS0330D, seed: 4111}
+          - {tag: B_EF, held: TS0330B, t1: TS0330E, t2: TS0330F, seed: 4112}
+          - {tag: B_GH, held: TS0330B, t1: TS0330G, t2: TS0330H, seed: 4113}
+          - {tag: C_DE, held: TS0330C, t1: TS0330D, t2: TS0330E, seed: 4121}
+          - {tag: C_FG, held: TS0330C, t1: TS0330F, t2: TS0330G, seed: 4122}
+          - {tag: C_HA, held: TS0330C, t1: TS0330H, t2: TS0330A, seed: 4123}
+          - {tag: D_EF, held: TS0330D, t1: TS0330E, t2: TS0330F, seed: 4131}
+          - {tag: D_GH, held: TS0330D, t1: TS0330G, t2: TS0330H, seed: 4132}
+          - {tag: D_AB, held: TS0330D, t1: TS0330A, t2: TS0330B, seed: 4133}
+          - {tag: E_FG, held: TS0330E, t1: TS0330F, t2: TS0330G, seed: 4141}
+          - {tag: E_HA, held: TS0330E, t1: TS0330H, t2: TS0330A, seed: 4142}
+          - {tag: E_BC, held: TS0330E, t1: TS0330B, t2: TS0330C, seed: 4143}
+          - {tag: F_GH, held: TS0330F, t1: TS0330G, t2: TS0330H, seed: 4151}
+          - {tag: F_AB, held: TS0330F, t1: TS0330A, t2: TS0330B, seed: 4152}
+          - {tag: F_CD, held: TS0330F, t1: TS0330C, t2: TS0330D, seed: 4153}
+          - {tag: G_HA, held: TS0330G, t1: TS0330H, t2: TS0330A, seed: 4161}
+          - {tag: G_BC, held: TS0330G, t1: TS0330B, t2: TS0330C, seed: 4162}
+          - {tag: G_DE, held: TS0330G, t1: TS0330D, t2: TS0330E, seed: 4163}
+          - {tag: H_AB, held: TS0330H, t1: TS0330A, t2: TS0330B, seed: 4171}
+          - {tag: H_CD, held: TS0330H, t1: TS0330C, t2: TS0330D, seed: 4172}
+          - {tag: H_EF, held: TS0330H, t1: TS0330E, t2: TS0330F, seed: 4173}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pandas requests remotezip openpyxl scikit-learn
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Prepare strict fold
+        run: |
+          mkdir -p work/vv_aug/${{ matrix.tag }}/fold out
+          python scripts/prepare_virtual_vehicle_aug_fold.py \
+            --heldout ${{ matrix.held }} --train ${{ matrix.t1 }} ${{ matrix.t2 }} \
+            --out work/vv_aug/${{ matrix.tag }}/fold
+      - name: Fit training-only RA-CDiff
+        run: |
+          python scripts/train_diffusion_v3_anchored.py \
+            --input work/vv_aug/${{ matrix.tag }}/fold/train_generator.npz \
+            --out work/vv_aug/${{ matrix.tag }}/syn \
+            --steps 600 --diffusion-steps 100 --batch-size 64 --hidden 24 \
+            --candidates 160 --noise-min 0.08 --noise-max 0.25 \
+            --seed ${{ matrix.seed }}
+      - name: Apply task guard and compare augmentation
+        run: |
+          python scripts/filter_virtual_vehicle_synthetic.py \
+            --synthetic work/vv_aug/${{ matrix.tag }}/syn/synthetic_windows.npz \
+            --train-real work/vv_aug/${{ matrix.tag }}/fold/train_real.npz \
+            --out work/vv_aug/${{ matrix.tag }}/syn_task.npz --seed ${{ matrix.seed }} --temp-cap 150
+          python scripts/evaluate_virtual_vehicle_aug_fold.py \
+            --fold-dir work/vv_aug/${{ matrix.tag }}/fold \
+            --synthetic work/vv_aug/${{ matrix.tag }}/syn_task.npz \
+            --out out/${{ matrix.tag }}.csv --seed ${{ matrix.seed }}
+          cp work/vv_aug/${{ matrix.tag }}/fold/summary.json out/${{ matrix.tag }}_fold.json
+          cp work/vv_aug/${{ matrix.tag }}/syn/report.json out/${{ matrix.tag }}_generator.json
+          cp work/vv_aug/${{ matrix.tag }}/syn/synthetic_quality.csv out/${{ matrix.tag }}_quality.csv
+          cp work/vv_aug/${{ matrix.tag }}/syn_task.json out/${{ matrix.tag }}_filter.json
+          rm -f work/vv_aug/${{ matrix.tag }}/syn/model.pt work/vv_aug/${{ matrix.tag }}/syn/synthetic_candidates.npz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vv-aug-${{ matrix.tag }}
+          path: out/
+          retention-days: 2
+
+  aggregate:
+    needs: fold
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install pandas numpy
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: vv-aug-*
+          path: collected
+          merge-multiple: true
+      - name: Aggregate by independent held-out experiment
+        run: |
+          rm -rf reports/virtual_vehicle_aug_utility
+          mkdir -p reports/virtual_vehicle_aug_utility/fold_audits
+          cp collected/*_fold.json collected/*_generator.json collected/*_quality.csv collected/*_filter.json reports/virtual_vehicle_aug_utility/fold_audits/
+          python - <<'PY'
+          from pathlib import Path
+          import pandas as pd, numpy as np, json
+          src=Path('collected'); out=Path('reports/virtual_vehicle_aug_utility')
+          files=sorted(p for p in src.glob('*.csv') if not p.name.endswith('_quality.csv'))
+          df=pd.concat([pd.read_csv(p) for p in files],ignore_index=True)
+          df.to_csv(out/'all_pair_metrics.csv',index=False)
+          held=df.groupby(['heldout','method','representation']).agg(
+              pair_count=('train_experiments','size'),auroc=('auroc','mean'),auprc=('auprc','mean'),
+              f1=('f1','mean'),balanced_accuracy=('balanced_accuracy','mean'),
+              aug_mean=('n_aug','mean')).reset_index()
+          held.to_csv(out/'heldout_macro_over_pairs.csv',index=False)
+          macro=held.groupby(['method','representation']).agg(
+              auroc_mean=('auroc','mean'),auroc_worst=('auroc','min'),auprc_mean=('auprc','mean'),auprc_worst=('auprc','min'),
+              f1_mean=('f1','mean'),balanced_acc_mean=('balanced_accuracy','mean'),aug_mean=('aug_mean','mean')).reset_index()
+          macro.to_csv(out/'macro_metrics.csv',index=False)
+          # Paired held-out-experiment deltas, the correct n=8 comparison unit.
+          wide=held.pivot(index=['heldout','representation'],columns='method',values=['auroc','auprc','f1','balanced_accuracy']).reset_index()
+          delta=[]
+          for _,r in wide.iterrows():
+              for method in ('classical','racdiff'):
+                  rec={'heldout':r[('heldout','')],'representation':r[('representation','')],'method':method}
+                  for met in ('auroc','auprc','f1','balanced_accuracy'):
+                      rec[f'delta_{met}']=float(r[(met,method)]-r[(met,'real_only')])
+                  delta.append(rec)
+          d=pd.DataFrame(delta); d.to_csv(out/'paired_heldout_deltas.csv',index=False)
+          ds=d.groupby(['method','representation']).agg(
+              delta_auroc_mean=('delta_auroc','mean'),delta_auroc_median=('delta_auroc','median'),auroc_improved_experiments=('delta_auroc',lambda x:int((x>0).sum())),
+              delta_auprc_mean=('delta_auprc','mean'),delta_auprc_median=('delta_auprc','median'),auprc_improved_experiments=('delta_auprc',lambda x:int((x>0).sum())),
+              delta_f1_mean=('delta_f1','mean')).reset_index()
+          ds.to_csv(out/'paired_delta_summary.csv',index=False)
+          lines=['# Fold-safe RA-CDiff utility on 8-test Virtual Vehicle cohort','',
+                 'Frozen task: 120 s context, 300 s horizon to the first package `vent_gas` marker, max input cell-case temperature <=150 C. Primary scarcity regime: two independent real training experiments.','',
+                 'Each of the eight held-out real experiments is evaluated with three predeclared training pairs. RA-CDiff is refit inside every training pair. Classical augmentation receives the same retained augmentation count. Metrics below are first averaged over the three pairs for each held-out experiment and then macro-averaged over the eight independent tests.','',
+                 '| method | representation | mean AUROC | worst AUROC | mean AUPRC | worst AUPRC | mean F1 |','|---|---|---:|---:|---:|---:|---:|']
+          for _,r in macro.iterrows():
+              lines.append(f"| {r.method} | {r.representation} | {r.auroc_mean:.3f} | {r.auroc_worst:.3f} | {r.auprc_mean:.3f} | {r.auprc_worst:.3f} | {r.f1_mean:.3f} |")
+          lines += ['', '## Paired change versus real-only (n=8 held-out experiments)','',
+                    '| method | representation | ΔAUROC mean | AUROC improved | ΔAUPRC mean | AUPRC improved | ΔF1 mean |','|---|---|---:|---:|---:|---:|---:|']
+          for _,r in ds.iterrows():
+              lines.append(f"| {r.method} | {r.representation} | {r.delta_auroc_mean:+.3f} | {int(r.auroc_improved_experiments)}/8 | {r.delta_auprc_mean:+.3f} | {int(r.auprc_improved_experiments)}/8 | {r.delta_f1_mean:+.3f} |")
+          lines += ['', '## Guardrail','',
+                    'The statistical unit is the held-out real experiment (n=8), not 24 training-pair folds and not overlapping windows. Synthetic windows remain local training variants and do not increase destructive-experiment sample size. Results are retained whether positive, mixed or negative.']
+          (out/'README.md').write_text('\n'.join(lines)+'\n',encoding='utf-8'); print('\n'.join(lines))
+          PY
+      - name: Commit final augmentation study
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/virtual_vehicle_aug_utility
+          git commit -m 'research: evaluate fold-safe RA-CDiff under experiment scarcity'
+          git pull --rebase origin main
+          git push origin HEAD:main
