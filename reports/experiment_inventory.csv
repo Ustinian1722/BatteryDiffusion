@@ -1,0 +1,10 @@
+experiment_id,level,form_factor,aging,signals,n_signal_files,has_temperature,has_pressure,has_force,multimodal,rows_min,rows_max,duration_s_min,duration_s_max,median_dt_s_min,median_dt_s_max,sampling_hz_min,sampling_hz_max
+A1,cell,pouch,fresh,temperature,1,1,0,0,0,9243.0,9243.0,,,,,,
+A2,cell,pouch,fresh,force+temperature,2,1,0,1,1,9243.0,9243.0,,,,,,
+B1,cell,2170,fresh,temperature,1,1,0,0,0,2967.0,2967.0,,,,,,
+B2,cell,2170,fresh,pressure+temperature,2,1,1,0,1,6644.0,13131.0,,,,,,
+C1,cell,2170,aged,pressure+temperature,2,1,1,0,1,2636.0,5372.0,,,,,,
+C2,cell,2170,aged,pressure+temperature,2,1,1,0,1,2598.0,5372.0,,,,,,
+D1,cell,pouch,aged,pressure+temperature,2,1,1,0,1,9243.0,9243.0,,,,,,
+M1,module,pouch,fresh,force+temperature,2,1,0,1,1,4965.0,22069.0,4964.0,4964.0,1.0,1.0,1.0,1.0
+M2,module,pouch,aged,force+temperature,2,1,0,1,1,3875.0,23589.0,3874.0,3874.0,1.0,1.0,1.0,1.0
