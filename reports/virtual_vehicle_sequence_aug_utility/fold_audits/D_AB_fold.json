@@ -1,0 +1,30 @@
+{
+  "heldout": "TS0330D",
+  "train_experiments": [
+    "TS0330A",
+    "TS0330B"
+  ],
+  "n_train_windows": 82,
+  "n_train_positive": 19,
+  "n_test_windows": 32,
+  "n_test_positive": 7,
+  "center": [
+    85.5,
+    1.2797271013259888
+  ],
+  "scale": [
+    60.5,
+    0.040073394775390625
+  ],
+  "events_s": {
+    "TS0330A": 815.89,
+    "TS0330B": 796.36,
+    "TS0330D": 696.01
+  },
+  "task": {
+    "window_s": 120,
+    "stride_s": 10,
+    "horizon_s": 300,
+    "temp_cap_c": 150
+  }
+}
