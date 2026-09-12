@@ -1,0 +1,40 @@
+name: Audit Virtual Vehicle early-warning task support
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/audit_virtual_vehicle_task_support.py'
+      - '.github/workflows/audit-virtual-vehicle-task-support.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: python -m pip install numpy pandas requests remotezip openpyxl
+      - name: Audit support without fitting a predictor
+        run: |
+          rm -rf reports/external_virtual_vehicle_21700/task_support
+          python scripts/audit_virtual_vehicle_task_support.py --out reports/external_virtual_vehicle_21700/task_support
+      - name: Commit support audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/external_virtual_vehicle_21700/task_support
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'research: audit Virtual Vehicle task support before scoring'
+          git pull --rebase origin main
+          git push origin HEAD:main
