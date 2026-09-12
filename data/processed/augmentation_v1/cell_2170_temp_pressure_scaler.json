@@ -8,5 +8,10 @@
     1.5992000102996826
   ],
   "normalization": "global 1st/99th-percentile midpoint and half-range on selected training experiments",
-  "excluded_experiments": []
+  "excluded_experiments": [],
+  "stage_semantics": {
+    "0": "pre_rapid",
+    "1": "rapid_peak",
+    "2": "post_peak"
+  }
 }

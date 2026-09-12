@@ -7,18 +7,97 @@
     "C1",
     "C2"
   ],
-  "training_steps": 400,
-  "candidate_synthetic_windows": 128,
-  "accepted_synthetic_windows": 0,
-  "acceptance_rate": 0.0,
-  "fresh_accepted": 0,
-  "aged_accepted": 0,
+  "training_steps": 800,
+  "candidate_synthetic_windows": 256,
+  "accepted_synthetic_windows": 121,
+  "acceptance_rate": 0.47265625,
+  "condition_group_counts": [
+    {
+      "age": 0,
+      "stage": 0,
+      "count": 24,
+      "sum": 7
+    },
+    {
+      "age": 0,
+      "stage": 1,
+      "count": 4,
+      "sum": 4
+    },
+    {
+      "age": 0,
+      "stage": 2,
+      "count": 118,
+      "sum": 73
+    },
+    {
+      "age": 1,
+      "stage": 0,
+      "count": 69,
+      "sum": 0
+    },
+    {
+      "age": 1,
+      "stage": 1,
+      "count": 4,
+      "sum": 4
+    },
+    {
+      "age": 1,
+      "stage": 2,
+      "count": 37,
+      "sum": 33
+    }
+  ],
   "quality_thresholds": {
-    "feature_robust_z_max": 8.0,
-    "nearest_real_distance_min": 0.0036515553947538137,
-    "nearest_real_distance_max": 1.542306900024414,
-    "max_abs_normalized": 8.0,
-    "real_real_nn_median": 0.024639075621962547
+    "age0_stage0": {
+      "n_real_reference": 20,
+      "feature_z_max": 6.0,
+      "nearest_real_min": 0.0021337172947824,
+      "nearest_real_max": 4.351296424865723,
+      "real_real_nn_median": 0.015079587697982788,
+      "max_abs_normalized": 4.0
+    },
+    "age0_stage1": {
+      "n_real_reference": 99,
+      "feature_z_max": 6.0,
+      "nearest_real_min": 0.0022619382943958044,
+      "nearest_real_max": 2.4630239009857178,
+      "real_real_nn_median": 0.023877175524830818,
+      "max_abs_normalized": 4.0
+    },
+    "age0_stage2": {
+      "n_real_reference": 77,
+      "feature_z_max": 6.0,
+      "nearest_real_min": 0.0030230642296373844,
+      "nearest_real_max": 0.5516737699508667,
+      "real_real_nn_median": 0.024639075621962547,
+      "max_abs_normalized": 4.0
+    },
+    "age1_stage0": {
+      "n_real_reference": 45,
+      "feature_z_max": 6.0,
+      "nearest_real_min": 0.003084873780608177,
+      "nearest_real_max": 0.914925217628479,
+      "real_real_nn_median": 0.02269713766872883,
+      "max_abs_normalized": 4.0
+    },
+    "age1_stage1": {
+      "n_real_reference": 75,
+      "feature_z_max": 6.0,
+      "nearest_real_min": 0.0031412895768880844,
+      "nearest_real_max": 4.315157890319824,
+      "real_real_nn_median": 0.02613050863146782,
+      "max_abs_normalized": 4.0
+    },
+    "age1_stage2": {
+      "n_real_reference": 25,
+      "feature_z_max": 6.0,
+      "nearest_real_min": 0.00416145846247673,
+      "nearest_real_max": 3.001875400543213,
+      "real_real_nn_median": 0.05068410560488701,
+      "max_abs_normalized": 4.0
+    }
   },
   "important_caveat": "Synthetic windows are augmentation samples, not new independent TR experiments."
 }
