@@ -1,0 +1,40 @@
+name: Audit external Virtual Vehicle 21700 package
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/audit_external_virtual_vehicle_21700.py'
+      - '.github/workflows/audit-external-virtual-vehicle-21700.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: python -m pip install pandas requests remotezip
+      - name: Audit Zenodo package without full download
+        run: |
+          rm -rf reports/external_virtual_vehicle_21700
+          python scripts/audit_external_virtual_vehicle_21700.py --out reports/external_virtual_vehicle_21700
+      - name: Commit audit only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/external_virtual_vehicle_21700
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'data: audit external Virtual Vehicle 21700 package'
+          git pull --rebase origin main
+          git push origin HEAD:main
