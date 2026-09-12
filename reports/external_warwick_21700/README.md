@@ -10,12 +10,12 @@ Dataset record: **rgfhdhcd9k**, public version 1; the 2025 Data in Brief descrip
 
 ## Source-supported structure
 
-The open data descriptor reports three independent Sony VTC6A 21700 tests at 100% SOC, triggered by 40 W external heating. The processed MATLAB data contain internal pressure, voltage, internal/surface temperatures and two vent-temperature channels. Pressure/voltage channels use a 1 kHz acquisition time base and temperature channels a 10 Hz time base. Exact field names and units are recorded in `source_supported_schema.csv`.
+The open data descriptor reports three independent Sony VTC6A 21700 tests at 100% SOC, triggered by 40 W external heating. The processed MATLAB data contain internal pressure, voltage, internal/surface temperatures and two vent-temperature channels. The source reports a high-rate electrical/pressure time base and a 10 Hz temperature time base. Exact field names and units are recorded in `source_supported_schema.csv`.
 
 ## Access note
 
-If `file_manifest.csv` is empty, that is an access-layer result rather than evidence that the dataset has no files. Mendeley may block the interactive page from hosted runner IPs. We therefore keep source-derived schema separate from raw-file-derived schema and do not fabricate file identifiers.
+If `file_manifest.csv` is empty, that is an access-layer result rather than evidence that the dataset has no files. Mendeley may block hosted runner IPs. We therefore keep source-derived schema separate from raw-file-derived schema and do not fabricate file identifiers.
 
 ## Intended use
 
-Once raw file access is resolved, these three tests are the highest-priority cylindrical external thermo-pressure cohort. Event landmarks will be frozen from the source paper / pressure-drop trace before predictive evaluation.
+Once raw file access is resolved, these three tests are the highest-priority cylindrical external thermo-pressure cohort. Event landmarks will be frozen from source-supported vent stages / pressure landmarks before predictive evaluation.

@@ -2,6 +2,7 @@
   "public_api": "https://data.mendeley.com/public-api/datasets/rgfhdhcd9k/files?folder_id=root&version=1",
   "dataset_page": "https://data.mendeley.com/datasets/rgfhdhcd9k/1",
   "public_api_status": 403,
+  "public_api_content_type": "text/html; charset=UTF-8",
   "public_api_payload_type": null,
   "dataset_page_status": 403,
   "discovery_method": "blocked_or_no_files"

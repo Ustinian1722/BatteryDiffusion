@@ -1,6 +1,6 @@
 field,unit,source_description
 TestID,-,test identifier
-ExpTime,s,time base for IntPre and CellVoltage; 1 kHz acquisition
+ExpTime,s,time base for pressure/voltage channels
 IntPre,bar,internal gas pressure
 CellVoltage,V,cell voltage
 ExpTimeTemp,s,temperature time base; 10 Hz acquisition
