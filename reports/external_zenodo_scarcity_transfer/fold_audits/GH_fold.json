@@ -1,0 +1,28 @@
+{
+  "train_experiments": [
+    "TS0330G",
+    "TS0330H"
+  ],
+  "n_train_windows": 64,
+  "n_train_positive": 22,
+  "n_train_negative": 42,
+  "events_s": {
+    "TS0330G": 673.33,
+    "TS0330H": 636.86
+  },
+  "center": [
+    90.07176208496094,
+    1.7149202823638916
+  ],
+  "scale": [
+    56.8387336730957,
+    0.013133049011230469
+  ],
+  "task": {
+    "window_s": 120,
+    "stride_s": 10,
+    "horizon_s": 300,
+    "temp_cap_c": 150.0
+  },
+  "external_data_used": false
+}
