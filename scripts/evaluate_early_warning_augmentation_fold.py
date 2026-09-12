@@ -19,24 +19,35 @@ from sklearn.preprocessing import StandardScaler
 from evaluate_early_warning_baseline import window_descriptors, select_modality
 
 
-def balanced_anchor_indices(y: np.ndarray,n: int,rng: np.random.Generator)->np.ndarray:
-    classes=np.unique(y); out=[]
-    per=int(np.ceil(n/len(classes)))
-    for c in classes:
-        pool=np.flatnonzero(y==c); out.extend(rng.choice(pool,size=per,replace=True).tolist())
-    out=np.asarray(out[:n],dtype=int); rng.shuffle(out); return out
-
-
 def classical_augment(x: np.ndarray,y: np.ndarray,n: int,temp_cap: float,rng: np.random.Generator):
-    if n<=0: return np.empty((0,*x.shape[1:]),dtype=np.float32),np.empty(0,dtype=np.int64)
-    ch_std=np.std(x,axis=(0,2)); generated=[]; labels=[]; attempts=0
-    while len(generated)<n and attempts<n*20:
-        attempts+=1; idx=balanced_anchor_indices(y,1,rng)[0]; s=x[idx].astype(np.float64).copy()
-        for c in range(s.shape[0]):
-            a=rng.uniform(0.96,1.04); baseline=s[c,0]; s[c]=baseline+a*(s[c]-baseline)
-            s[c]+=rng.normal(0,max(ch_std[c]*0.003,1e-4),size=s.shape[1])
-        if np.max(s[0])>temp_cap or np.min(s[0])< -20 or not np.isfinite(s).all(): continue
-        generated.append(s.astype(np.float32)); labels.append(int(y[idx]))
+    """Mild label-preserving amplitude/noise augmentation with balanced classes.
+
+    The requested synthetic budget is split as evenly as possible across the
+    observed warning classes before perturbation. A candidate that violates the
+    frozen temperature guard is retried within the same target class, avoiding
+    class drift caused by rejection sampling.
+    """
+    if n<=0:
+        return np.empty((0,*x.shape[1:]),dtype=np.float32),np.empty(0,dtype=np.int64)
+    classes=np.unique(y)
+    targets=np.tile(classes,int(np.ceil(n/len(classes))))[:n].copy()
+    rng.shuffle(targets)
+    ch_std=np.std(x,axis=(0,2)); generated=[]; labels=[]
+    for target in targets:
+        pool=np.flatnonzero(y==target)
+        accepted=False
+        for _ in range(30):
+            idx=int(rng.choice(pool)); s=x[idx].astype(np.float64).copy()
+            for c in range(s.shape[0]):
+                a=rng.uniform(0.96,1.04); baseline=s[c,0]; s[c]=baseline+a*(s[c]-baseline)
+                s[c]+=rng.normal(0,max(ch_std[c]*0.003,1e-4),size=s.shape[1])
+            if np.max(s[0])>temp_cap or np.min(s[0])< -20 or not np.isfinite(s).all():
+                continue
+            generated.append(s.astype(np.float32)); labels.append(int(target)); accepted=True; break
+        # A failed target is intentionally not replaced by the opposite class.
+        # This preserves class balance as far as the physical task guard permits.
+        if not accepted:
+            continue
     return np.stack(generated) if generated else np.empty((0,*x.shape[1:]),dtype=np.float32),np.asarray(labels,dtype=np.int64)
 
 
@@ -62,7 +73,7 @@ def main():
             rows.append({'heldout':summary['heldout'],'train_fraction':summary['train_fraction'],'method':method,'modality':mode,'n_real_train':len(xtr),'n_aug':0 if method=='real_only' else (len(xc) if method=='classical' else len(xs)),'n_test':len(yte),'test_positive':int(yte.sum()),**m})
     import pandas as pd
     pd.DataFrame(rows).to_csv(args.out,index=False)
-    report={'heldout':summary['heldout'],'train_fraction':summary['train_fraction'],'real_train':len(xtr),'test_real':len(xte),'racdiff_aug':len(xs),'classical_aug':len(xc)}
+    report={'heldout':summary['heldout'],'train_fraction':summary['train_fraction'],'real_train':len(xtr),'test_real':len(xte),'racdiff_aug':len(xs),'classical_aug':len(xc),'classical_positive':int(yc.sum()),'racdiff_positive':int(ys.sum())}
     args.out.with_suffix('.json').write_text(json.dumps(report,indent=2),encoding='utf-8'); print(pd.DataFrame(rows).to_string(index=False))
 
 if __name__=='__main__': main()
