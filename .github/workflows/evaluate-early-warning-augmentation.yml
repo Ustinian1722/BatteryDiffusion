@@ -1,0 +1,107 @@
+name: Evaluate fold-safe RA-CDiff early-warning utility
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/prepare_early_warning_fold.py'
+      - 'scripts/filter_early_warning_synthetic.py'
+      - 'scripts/evaluate_early_warning_augmentation_fold.py'
+      - '.github/workflows/evaluate-early-warning-augmentation.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pandas openpyxl scikit-learn
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Run LOEO augmentation utility study
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf work/early_warning_loeo reports/early_warning_aug_utility
+          mkdir -p work/early_warning_loeo reports/early_warning_aug_utility/fold_audits
+          for SPEC in "f25 0.25" "f100 1.0"; do
+            set -- $SPEC
+            TAG=$1
+            FRAC=$2
+            for HELD in A2 D1 M1 M2; do
+              echo "=== ${TAG} heldout=${HELD} ==="
+              DIR="work/early_warning_loeo/${TAG}_${HELD}"
+              mkdir -p "$DIR"
+              python scripts/prepare_early_warning_fold.py \
+                --out "$DIR/fold" --heldout "$HELD" --fraction "$FRAC" \
+                --window 256 --stride 10 --horizon 900 --temp-cap 120
+              python scripts/train_diffusion_v3_anchored.py \
+                --input "$DIR/fold/train_generator.npz" \
+                --out "$DIR/syn" \
+                --steps 600 --diffusion-steps 100 --batch-size 64 --hidden 24 \
+                --candidates 160 --noise-min 0.08 --noise-max 0.25 \
+                --seed $((3100 + ${#TAG} * 10 + ${#HELD}))
+              python scripts/filter_early_warning_synthetic.py \
+                --synthetic "$DIR/syn/synthetic_windows.npz" \
+                --train-meta "$DIR/fold/train_windows.csv" \
+                --out "$DIR/syn_task.npz" --temp-cap 120
+              python scripts/evaluate_early_warning_augmentation_fold.py \
+                --fold-dir "$DIR/fold" --synthetic "$DIR/syn_task.npz" \
+                --out "reports/early_warning_aug_utility/${TAG}_${HELD}.csv" \
+                --seed 2026 --temp-cap 120
+              cp "$DIR/fold/summary.json" "reports/early_warning_aug_utility/fold_audits/${TAG}_${HELD}_fold.json"
+              cp "$DIR/syn/report.json" "reports/early_warning_aug_utility/fold_audits/${TAG}_${HELD}_generator.json"
+              cp "$DIR/syn_task.json" "reports/early_warning_aug_utility/fold_audits/${TAG}_${HELD}_task_filter.json"
+              cp "$DIR/syn/synthetic_quality.csv" "reports/early_warning_aug_utility/fold_audits/${TAG}_${HELD}_quality.csv"
+              rm -f "$DIR/syn/model.pt" "$DIR/syn/synthetic_candidates.npz"
+            done
+          done
+      - name: Aggregate fold results
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import pandas as pd
+          root=Path('reports/early_warning_aug_utility')
+          files=sorted(p for p in root.glob('f*.csv') if p.is_file())
+          df=pd.concat([pd.read_csv(p) for p in files],ignore_index=True)
+          df.to_csv(root/'all_fold_metrics.csv',index=False)
+          agg=df.groupby(['train_fraction','method','modality']).agg(
+              auroc_mean=('auroc','mean'),auroc_worst=('auroc','min'),
+              auprc_mean=('auprc','mean'),auprc_worst=('auprc','min'),
+              f1_mean=('f1','mean'),balanced_acc_mean=('balanced_accuracy','mean'),
+              aug_mean=('n_aug','mean')).reset_index()
+          agg.to_csv(root/'macro_metrics.csv',index=False)
+          lines=['# Fold-safe RA-CDiff augmentation utility','',
+                 'Frozen task: 256 s causal context, 900 s first-vent horizon, max temperature <= 120 C, stride 10 s.','',
+                 'Every row below is based on leave-one-real-experiment-out evaluation. The scaler and RA-CDiff generator are refit using training experiments only. Synthetic samples never enter the held-out real experiment.','',
+                 'Two training-data regimes are audited: 25% of eligible real training windows (scarcity stress test) and 100%.','',
+                 '| real fraction | method | modality | mean AUROC | worst AUROC | mean AUPRC | worst AUPRC | mean F1 |',
+                 '|---:|---|---|---:|---:|---:|---:|---:|']
+          for _,r in agg.iterrows():
+              lines.append(f"| {r.train_fraction:.2f} | {r.method} | {r.modality} | {r.auroc_mean:.3f} | {r.auroc_worst:.3f} | {r.auprc_mean:.3f} | {r.auprc_worst:.3f} | {r.f1_mean:.3f} |")
+          lines += ['', '## Interpretation guardrail','',
+                    'This is still an n=4 destructive-experiment proof-of-concept. The utility question is whether training-only synthetic variants improve held-out real-experiment performance, especially in the 25% real-data regime. Window counts are not experimental replicates.']
+          (root/'README.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
+          print('\n'.join(lines))
+          PY
+      - name: Commit reports
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/early_warning_aug_utility
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'research: evaluate fold-safe RA-CDiff early-warning utility'
+          git pull --rebase origin main
+          git push origin HEAD:main
