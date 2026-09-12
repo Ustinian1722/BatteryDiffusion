@@ -1,0 +1,31 @@
+{
+  "heldout": "TS0330G",
+  "k_real_train_experiments": 2,
+  "train_experiments": [
+    "TS0330H",
+    "TS0330A"
+  ],
+  "n_train_windows": 74,
+  "n_train_positive": 26,
+  "n_test_windows": 31,
+  "n_test_positive": 7,
+  "center": [
+    85.46763610839844,
+    1.483851671218872
+  ],
+  "scale": [
+    60.46763610839844,
+    0.24419933557510376
+  ],
+  "events_s": {
+    "TS0330H": 636.86,
+    "TS0330A": 815.89,
+    "TS0330G": 673.33
+  },
+  "task": {
+    "window_s": 120,
+    "stride_s": 10,
+    "horizon_s": 300,
+    "temp_cap_c": 150.0
+  }
+}

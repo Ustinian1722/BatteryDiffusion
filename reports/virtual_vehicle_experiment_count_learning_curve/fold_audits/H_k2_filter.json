@@ -1,0 +1,11 @@
+{
+  "input_accepted_quality_gate": 104,
+  "pass_task_guard": 103,
+  "retained_budgeted": 82,
+  "real_train_windows": 82,
+  "retained_positive": 41,
+  "retained_negative": 41,
+  "unique_real_anchors": 41,
+  "temp_cap_c": 150.0,
+  "guardrail": "anchor_index points only to the training-real fold; no test experiment contributes to augmentation"
+}
