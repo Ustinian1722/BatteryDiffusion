@@ -1,0 +1,117 @@
+name: Evaluate frozen LATH-Net v2 numerical fix
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/run_lath_v2_fold_fixed.py'
+      - '.github/workflows/evaluate-lath-v2-fixed.yml'
+
+permissions:
+  contents: write
+
+env:
+  PYTHONUNBUFFERED: '1'
+
+jobs:
+  fold:
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        held: [TS0330A, TS0330B, TS0330C, TS0330D, TS0330E, TS0330F, TS0330G, TS0330H]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pandas requests remotezip openpyxl scikit-learn
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Run frozen LATH-Net v2 fold with metric clipping only
+        run: |
+          python scripts/run_lath_v2_fold_fixed.py \
+            --heldout ${{ matrix.held }} \
+            --out out/${{ matrix.held }} \
+            --seeds 2026 2027 2028
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lath-v2-fixed-${{ matrix.held }}
+          path: out/${{ matrix.held }}/
+          retention-days: 3
+
+  aggregate:
+    needs: fold
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install pandas numpy
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: lath-v2-fixed-*
+          path: collected
+      - name: Aggregate experiment-level metrics and mechanism diagnostics
+        run: |
+          rm -rf reports/lath_v2_benchmark
+          mkdir -p reports/lath_v2_benchmark/fold_audits
+          python - <<'PY'
+          from pathlib import Path
+          import pandas as pd
+
+          root=Path('collected'); out=Path('reports/lath_v2_benchmark')
+          metric_files=sorted(root.glob('*/metrics.csv'))
+          pred_files=sorted(root.glob('*/predictions.csv'))
+          diag_files=sorted(root.glob('*/mechanism_diagnostics.csv'))
+          if len(metric_files)!=8: raise RuntimeError(f'expected 8 metric files, got {len(metric_files)}')
+          m=pd.concat([pd.read_csv(p) for p in metric_files],ignore_index=True)
+          m.to_csv(out/'all_seed_metrics.csv',index=False)
+          if pred_files: pd.concat([pd.read_csv(p) for p in pred_files],ignore_index=True).to_csv(out/'all_predictions.csv',index=False)
+          if diag_files:
+              d=pd.concat([pd.read_csv(p) for p in diag_files],ignore_index=True)
+              d.to_csv(out/'mechanism_diagnostics.csv',index=False)
+              cols=[c for c in d.columns if c.startswith('lag_weight_') or c=='gate_mean']
+              d.groupby('tau_band_s')[cols].mean().reset_index().to_csv(out/'mechanism_by_tau_band.csv',index=False)
+          for p in root.glob('*/audit.json'):
+              (out/'fold_audits'/f'{p.parent.name}.json').write_text(p.read_text(encoding='utf-8'),encoding='utf-8')
+          held=m.groupby('heldout').agg(seeds=('seed','size'),mae_s=('mae_s','mean'),rmse_s=('rmse_s','mean'),medae_s=('medae_s','mean'),r2=('r2','mean'),bias_s=('bias_s','mean'),params=('params','mean'),epochs=('epochs','mean')).reset_index()
+          held.to_csv(out/'heldout_metrics.csv',index=False)
+          hm=[]
+          for h in (60,120,180,300,450):
+              cols=[f'auroc_{h}',f'auprc_{h}',f'brier_{h}']; t=m.groupby('heldout')[cols].mean(numeric_only=True)
+              hm.append({'horizon_s':h,'auroc_macro':t[f'auroc_{h}'].mean(),'auprc_macro':t[f'auprc_{h}'].mean(),'brier_macro':t[f'brier_{h}'].mean()})
+          hdf=pd.DataFrame(hm); hdf.to_csv(out/'horizon_metrics.csv',index=False)
+          lines=['# LATH-Net v2 frozen benchmark','',
+                 'Protocol frozen before scores: 120 s causal temperature+pressure context, 0<time-to-first-`vent_gas`<=600 s, max input temperature <=150 C. One experiment is test, next cyclic experiment validation, six training. Three fixed seeds are averaged within held-out experiment. The only post-launch numerical fix clips float32 CDF values such as 1.000000119 to [0,1] before sklearn metrics; model training and predictions are unchanged.','',
+                 '## TTV headline metrics','',
+                 f"- Experiment-macro MAE: **{held.mae_s.mean():.2f} s**",
+                 f"- Worst held-out-experiment MAE: **{held.mae_s.max():.2f} s**",
+                 f"- Experiment-macro RMSE: **{held.rmse_s.mean():.2f} s**",
+                 f"- Experiment-macro MedAE: **{held.medae_s.mean():.2f} s**",
+                 f"- Experiment-macro R2: **{held.r2.mean():.4f}**",'',
+                 '| held-out | MAE | RMSE | MedAE | R2 | bias |','|---|---:|---:|---:|---:|---:|']
+          for _,r in held.iterrows(): lines.append(f"| {r.heldout} | {r.mae_s:.2f} | {r.rmse_s:.2f} | {r.medae_s:.2f} | {r.r2:.4f} | {r.bias_s:.2f} |")
+          lines += ['', '## Multi-horizon risk','', '| horizon | AUROC | AUPRC | Brier |','|---:|---:|---:|---:|']
+          for _,r in hdf.iterrows(): lines.append(f"| {int(r.horizon_s)} s | {r.auroc_macro:.3f} | {r.auprc_macro:.3f} | {r.brier_macro:.4f} |")
+          lines += ['', '## Guardrail','', 'Statistical unit is the independent destructive experiment (n=8). No augmentation is used. The original failed run is retained in Actions as an auditable numerical-metric failure, not deleted or overwritten.']
+          (out/'README.md').write_text('\n'.join(lines)+'\n',encoding='utf-8'); print('\n'.join(lines))
+          PY
+      - name: Commit LATH-Net v2 results
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/lath_v2_benchmark
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'research: add frozen LATH-Net v2 benchmark results'
+          git pull --rebase origin main
+          git push origin HEAD:main
