@@ -81,14 +81,19 @@ def find_signal_files(root: Path) -> dict[str, dict[str, Path]]:
     return out
 
 
-def robust_scale(x: np.ndarray, eps: float = 1e-6) -> tuple[np.ndarray, np.ndarray]:
-    # x: [N, C, L]
+def quantile_scale(x: np.ndarray, eps: float = 1e-6) -> tuple[np.ndarray, np.ndarray]:
+    """Scale most observed values to approximately [-1, 1].
+
+    Thermal-runaway signals are extremely heavy-tailed. Median/IQR scaling can
+    make the rare but physically important peak region numerically huge, so the
+    pilot uses the 1st/99th-percentile midpoint and half-range instead.
+    """
     flat = np.transpose(x, (1, 0, 2)).reshape(x.shape[1], -1)
-    med = np.nanmedian(flat, axis=1)
-    q25 = np.nanpercentile(flat, 25, axis=1)
-    q75 = np.nanpercentile(flat, 75, axis=1)
-    scale = np.maximum(q75 - q25, eps)
-    return med.astype(np.float32), scale.astype(np.float32)
+    q01 = np.nanpercentile(flat, 1, axis=1)
+    q99 = np.nanpercentile(flat, 99, axis=1)
+    center = 0.5 * (q01 + q99)
+    scale = np.maximum(0.5 * (q99 - q01), eps)
+    return center.astype(np.float32), scale.astype(np.float32)
 
 
 def main() -> None:
@@ -113,7 +118,7 @@ def main() -> None:
         temp_path = signals["temperature"]
         level, form, aging = context_from_path(temp_path)
         if level != "cell":
-            continue  # module is intentionally a later, separately aligned cohort
+            continue
         mech_key = "pressure" if "pressure" in signals else "force" if "force" in signals else None
         if mech_key is None:
             continue
@@ -123,7 +128,6 @@ def main() -> None:
         except ValueError:
             continue
 
-        # Use only the temporal overlap and the coarser observed sampling interval.
         t0 = max(float(temp.time.min()), float(mech.time.min()))
         t1 = min(float(temp.time.max()), float(mech.time.max()))
         if not np.isfinite(t0 + t1) or t1 <= t0:
@@ -164,7 +168,7 @@ def main() -> None:
             continue
         x = np.stack(wins, axis=0).astype(np.float32)
         meta = pd.DataFrame(cohort_meta[cohort])
-        center, scale = robust_scale(x)
+        center, scale = quantile_scale(x)
         x_norm = (x - center[None, :, None]) / scale[None, :, None]
         age = (meta["aging"].str.lower() == "aged").astype(np.int64).to_numpy()
         np.savez_compressed(
@@ -180,7 +184,7 @@ def main() -> None:
         (args.out / f"{cohort}_scaler.json").write_text(json.dumps({
             "center": center.tolist(),
             "scale": scale.tolist(),
-            "normalization": "global robust median/IQR on the selected training experiments",
+            "normalization": "global 1st/99th-percentile midpoint and half-range on selected training experiments",
             "excluded_experiments": sorted(excluded),
         }, indent=2), encoding="utf-8")
         summary.append({
