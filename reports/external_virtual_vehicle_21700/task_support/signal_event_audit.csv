@@ -1,0 +1,9 @@
+experiment,export_rows,raw_t_min_s,raw_t_max_s,median_raw_dt_s,event_time_s,event_type,pressure_min_bar_abs,pressure_max_bar_abs,temperature_min_c,temperature_max_c,pressure_technical_name,pressure_semantic_name,temperature_technical_name,temperature_semantic_name
+TS0330A,765,96.629,1305.241,0.9430000000000405,815.89,vent_gas,1.23964,1.61932,25.0,613.0,I61,Pressure,TC2,Cell case Z3808
+TS0330B,854,53.786,1294.739,0.3000000000000682,796.36,vent_gas,1.3179,1.67368,26.0,601.0,I61,Pressure,TC6,Cell case Z3809
+TS0330C,736,29.651,1246.698,0.9669999999999845,742.94,vent_gas,1.39297,1.7504,27.0,566.0,I61,Pressure,TC10,Cell case Z3810
+TS0330D,753,33.152,1159.816,0.6310000000000286,696.01,vent_gas,1.46948,1.85537,28.0,565.0,I61,Pressure,TC14,Cell case Z3811
+TS0330E,820,34.669,1324.175,0.7699999999999818,680.8,vent_gas,1.54815,1.93594,28.0,592.0,I61,Pressure,TC18,Cell case Z3812
+TS0330F,799,50.707,1186.241,0.7495000000000118,685.35,vent_gas,1.62595,2.00444,29.0,598.0,I61,Pressure,TC22,Cell case Z3813
+TS0330G,863,22.036,1164.35,0.5869999999999891,673.33,vent_gas,1.70177,2.07543,30.0,581.0,I61,Pressure,TC26,Cell case Z3814
+TS0330H,806,37.924,997.337,0.5800000000000409,636.86,vent_gas,1.72742,2.05524,32.0,632.0,I97,Pressure,TC30,Cell case Z3815

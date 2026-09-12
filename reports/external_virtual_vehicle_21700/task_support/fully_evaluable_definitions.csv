@@ -1,0 +1,4 @@
+window_s,horizon_s,temp_cap_c,experiments_with_both_classes,experiments_with_positive,experiments_with_negative,min_positive,min_negative,total_windows,total_positive,total_negative
+256,300,150,8,8,8,3,5,172,76,96
+120,300,150,8,8,8,3,18,283,78,205
+60,300,150,8,8,8,3,24,333,80,253
