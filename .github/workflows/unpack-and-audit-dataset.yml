@@ -19,7 +19,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Extract archive
+      - name: Extract archive recursively
         shell: bash
         run: |
           set -euo pipefail
@@ -27,20 +27,40 @@ jobs:
           mkdir -p data/raw/osf_c2hnq reports
           python - <<'PY'
           from pathlib import Path
-          from zipfile import ZipFile
+          from zipfile import ZipFile, is_zipfile
 
-          archive = Path('c2hnq-osfstorage-archive.zip')
-          out = Path('data/raw/osf_c2hnq')
-          with ZipFile(archive) as zf:
-              for member in zf.infolist():
-                  name = member.filename.replace('\\', '/')
-                  if name.startswith('__MACOSX/') or '/__MACOSX/' in name:
-                      continue
-                  # Prevent path traversal.
-                  dest = (out / name).resolve()
-                  if out.resolve() not in dest.parents and dest != out.resolve():
-                      raise RuntimeError(f'Unsafe ZIP member: {name}')
-                  zf.extract(member, out)
+          root = Path('data/raw/osf_c2hnq').resolve()
+          outer = Path('c2hnq-osfstorage-archive.zip')
+
+          def safe_extract(zip_path: Path, out_dir: Path):
+              out_dir = out_dir.resolve()
+              out_dir.mkdir(parents=True, exist_ok=True)
+              with ZipFile(zip_path) as zf:
+                  for member in zf.infolist():
+                      name = member.filename.replace('\\', '/')
+                      if name.startswith('__MACOSX/') or '/__MACOSX/' in name:
+                          continue
+                      dest = (out_dir / name).resolve()
+                      if out_dir not in dest.parents and dest != out_dir:
+                          raise RuntimeError(f'Unsafe ZIP member: {name}')
+                      zf.extract(member, out_dir)
+
+          safe_extract(outer, root)
+
+          # OSF exports can contain a nested Dataset_TR.zip. Expand nested ZIPs
+          # into a directory named after the archive and remove the nested archive.
+          while True:
+              nested = [p for p in root.rglob('*.zip') if p.is_file() and is_zipfile(p)]
+              if not nested:
+                  break
+              progressed = False
+              for z in nested:
+                  target = z.with_suffix('')
+                  safe_extract(z, target)
+                  z.unlink()
+                  progressed = True
+              if not progressed:
+                  break
           PY
 
       - name: Create dataset tree and CSV audit
@@ -68,7 +88,6 @@ jobs:
               }
               if p.suffix.lower() == '.csv':
                   try:
-                      # Try common encodings used by spreadsheet exports.
                       text = None
                       used_encoding = None
                       for enc in ('utf-8-sig', 'utf-8', 'gb18030', 'latin1'):
@@ -119,5 +138,5 @@ jobs:
             echo 'No dataset changes to commit.'
             exit 0
           fi
-          git commit -m 'data: unpack and audit OSF thermal-runaway dataset'
+          git commit -m 'data: recursively unpack and audit OSF thermal-runaway dataset'
           git push origin HEAD:main
