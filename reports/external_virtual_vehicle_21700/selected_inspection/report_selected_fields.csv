@@ -1,0 +1,287 @@
+experiment,field,unit,value,source_row,source_col
+TS0330A,experiment designation,,TS0330A,3,0
+TS0330A,cell_type_id,,BAK_N21700CG-50,3,5
+TS0330A,soc,%,60,3,14
+TS0330A,voltage_before_TR,V,3.83007458794885,3,20
+TS0330A,CellVoltageDropFiftyPer_CellCaseT,°C,125.554595947266,3,21
+TS0330A,FiveSecBefNinetyPerSecVentStart CellCaseT,,180.813751220703,3,22
+TS0330A,OneSecBefNinetyPerSecVentStart_CellSurfMaxT,,184.581771850586,3,23
+TS0330A,OneSecBefNinetyPerSecVentStart_CellSurfMaxTSensorCapt,,TK2,3,24
+TS0330A,FiveSecBefNinetyPerSecVentStart_CellSurfMaxT,,180.813751220703,3,25
+TS0330A,FiveSecBefNinetyPerSecVentStart_CellSurfMaxTSensorCapt,,TK2,3,26
+TS0330A,NinetyPerSecVentStart_CellCaseT,,185.825607299805,3,27
+TS0330A,max_cell_temperature,,612.984802246094,3,28
+TS0330A,max_cell_temperature_sensor_name,,TK2,3,29
+TS0330A,max vent gas temperature,,822.502197265625,3,30
+TS0330A,max gas temperature,,41.3423194885254,3,31
+TS0330A,max over pressure,bar,0.377152096166868,3,32
+TS0330A,first venting n,mol,0,3,33
+TS0330A,second venting n,,0.334243301606315,3,34
+TS0330A,temperature of produced not condensated gas,°C,27.476108478835,3,37
+TS0330A,max rate 50per pressure corrected,mol/s,1.2855783211498,3,39
+TS0330A,max rate 90per pressure corrected,,0.668491136708294,3,40
+TS0330A,min_time_50per_pressure,s,0.129997253417969,3,41
+TS0330A,min_time_90per_pressure,,0.449996948242188,3,42
+TS0330A,Max_Rate_50per_Pressure_Corrected_SATP,l/s (SATP),31.3681110360551,3,43
+TS0330A,Max_Rate_90per_Pressure_Corrected_SATP,,16.3111837356824,3,44
+TS0330A,post_thermal_runaway_amount_of_gas,mol,6.07397127190859,3,79
+TS0330B,experiment designation,,TS0330B,4,0
+TS0330B,cell_type_id,,BAK_N21700CG-50,4,5
+TS0330B,soc,%,60,4,14
+TS0330B,voltage_before_TR,V,3.83243513824348,4,20
+TS0330B,CellVoltageDropFiftyPer_CellCaseT,°C,126.936187744141,4,21
+TS0330B,FiveSecBefNinetyPerSecVentStart CellCaseT,,132.160400390625,4,22
+TS0330B,OneSecBefNinetyPerSecVentStart_CellSurfMaxT,,133.246719360352,4,23
+TS0330B,OneSecBefNinetyPerSecVentStart_CellSurfMaxTSensorCapt,,TK2,4,24
+TS0330B,FiveSecBefNinetyPerSecVentStart_CellSurfMaxT,,132.160400390625,4,25
+TS0330B,FiveSecBefNinetyPerSecVentStart_CellSurfMaxTSensorCapt,,TK2,4,26
+TS0330B,NinetyPerSecVentStart_CellCaseT,,133.564300537109,4,27
+TS0330B,max_cell_temperature,,600.793640136719,4,28
+TS0330B,max_cell_temperature_sensor_name,,TK2,4,29
+TS0330B,max vent gas temperature,,1208.09631347656,4,30
+TS0330B,max gas temperature,,42.2075576782227,4,31
+TS0330B,max over pressure,bar,0.354036334146911,4,32
+TS0330B,first venting n,mol,0,4,33
+TS0330B,second venting n,,0.326646177305543,4,34
+TS0330B,temperature of produced not condensated gas,°C,28.3602189171367,4,37
+TS0330B,max rate 50per pressure corrected,mol/s,0.296953541814924,4,39
+TS0330B,max rate 90per pressure corrected,,0.239010228241343,4,40
+TS0330B,min_time_50per_pressure,s,0.549995422363281,4,41
+TS0330B,min_time_90per_pressure,,1.22999572753906,4,42
+TS0330B,Max_Rate_50per_Pressure_Corrected_SATP,l/s (SATP),7.24566642028415,4,43
+TS0330B,Max_Rate_90per_Pressure_Corrected_SATP,,5.83184956908878,4,44
+TS0330B,post_thermal_runaway_amount_of_gas,mol,6.40392333413846,4,79
+TS0330C,experiment designation,,TS0330C,5,0
+TS0330C,cell_type_id,,BAK_N21700CG-50,5,5
+TS0330C,soc,%,60,5,14
+TS0330C,voltage_before_TR,V,3.82537827814432,5,20
+TS0330C,CellVoltageDropFiftyPer_CellCaseT,°C,131.763885498047,5,21
+TS0330C,FiveSecBefNinetyPerSecVentStart CellCaseT,,186.57112121582,5,22
+TS0330C,OneSecBefNinetyPerSecVentStart_CellSurfMaxT,,190.998168945313,5,23
+TS0330C,OneSecBefNinetyPerSecVentStart_CellSurfMaxTSensorCapt,,TK2,5,24
+TS0330C,FiveSecBefNinetyPerSecVentStart_CellSurfMaxT,,186.57112121582,5,25
+TS0330C,FiveSecBefNinetyPerSecVentStart_CellSurfMaxTSensorCapt,,TK2,5,26
+TS0330C,NinetyPerSecVentStart_CellCaseT,,192.600692749023,5,27
+TS0330C,max_cell_temperature,,565.987609863281,5,28
+TS0330C,max_cell_temperature_sensor_name,,TK2,5,29
+TS0330C,max vent gas temperature,,1141.99389648438,5,30
+TS0330C,max gas temperature,,48.7700958251953,5,31
+TS0330C,max over pressure,bar,0.357761897826981,5,32
+TS0330C,first venting n,mol,0,5,33
+TS0330C,second venting n,,0.318271401344235,5,34
+TS0330C,temperature of produced not condensated gas,°C,29.7211705363894,5,37
+TS0330C,max rate 50per pressure corrected,mol/s,0.795690644636294,5,39
+TS0330C,max rate 90per pressure corrected,,0.502534060650941,5,40
+TS0330C,min_time_50per_pressure,s,0.199996948242188,5,41
+TS0330C,min_time_90per_pressure,,0.569999694824219,5,42
+TS0330C,Max_Rate_50per_Pressure_Corrected_SATP,l/s (SATP),19.4148517291256,5,43
+TS0330C,Max_Rate_90per_Pressure_Corrected_SATP,,12.261831079883,5,44
+TS0330C,post_thermal_runaway_amount_of_gas,mol,6.72109493089106,5,79
+TS0330D,experiment designation,,TS0330D,6,0
+TS0330D,cell_type_id,,BAK_N21700CG-50,6,5
+TS0330D,soc,%,60,6,14
+TS0330D,voltage_before_TR,V,3.82946430021302,6,20
+TS0330D,CellVoltageDropFiftyPer_CellCaseT,°C,130.834075927734,6,21
+TS0330D,FiveSecBefNinetyPerSecVentStart CellCaseT,,190.202377319336,6,22
+TS0330D,OneSecBefNinetyPerSecVentStart_CellSurfMaxT,,194.938446044922,6,23
+TS0330D,OneSecBefNinetyPerSecVentStart_CellSurfMaxTSensorCapt,,TK2,6,24
+TS0330D,FiveSecBefNinetyPerSecVentStart_CellSurfMaxT,,190.202377319336,6,25
+TS0330D,FiveSecBefNinetyPerSecVentStart_CellSurfMaxTSensorCapt,,TK2,6,26
+TS0330D,NinetyPerSecVentStart_CellCaseT,,196.816772460938,6,27
+TS0330D,max_cell_temperature,,565.219360351563,6,28
+TS0330D,max_cell_temperature_sensor_name,,TK2,6,29
+TS0330D,max vent gas temperature,,1501.57104492188,6,30
+TS0330D,max gas temperature,,52.4823799133301,6,31
+TS0330D,max over pressure,bar,0.384428957966717,6,32
+TS0330D,first venting n,mol,0,6,33
+TS0330D,second venting n,,0.334755688905228,6,34
+TS0330D,temperature of produced not condensated gas,°C,31.2364218759626,6,37
+TS0330D,max rate 50per pressure corrected,mol/s,0.643774541583809,6,39
+TS0330D,max rate 90per pressure corrected,,0.614860068362281,6,40
+TS0330D,min_time_50per_pressure,s,0.259994506835938,6,41
+TS0330D,min_time_90per_pressure,,0.489997863769531,6,42
+TS0330D,Max_Rate_50per_Pressure_Corrected_SATP,l/s (SATP),15.7080988146449,6,43
+TS0330D,Max_Rate_90per_Pressure_Corrected_SATP,,15.0025856680396,6,44
+TS0330D,post_thermal_runaway_amount_of_gas,mol,7.05191386427894,6,79
+TS0330E,experiment designation,,TS0330E,7,0
+TS0330E,cell_type_id,,BAK_N21700CG-50,7,5
+TS0330E,soc,%,60,7,14
+TS0330E,voltage_before_TR,V,3.83137877225876,7,20
+TS0330E,CellVoltageDropFiftyPer_CellCaseT,°C,120.604774475098,7,21
+TS0330E,FiveSecBefNinetyPerSecVentStart CellCaseT,,173.186614990234,7,22
+TS0330E,OneSecBefNinetyPerSecVentStart_CellSurfMaxT,,178.49397277832,7,23
+TS0330E,OneSecBefNinetyPerSecVentStart_CellSurfMaxTSensorCapt,,TK2,7,24
+TS0330E,FiveSecBefNinetyPerSecVentStart_CellSurfMaxT,,173.186614990234,7,25
+TS0330E,FiveSecBefNinetyPerSecVentStart_CellSurfMaxTSensorCapt,,TK2,7,26
+TS0330E,NinetyPerSecVentStart_CellCaseT,,179.822052001953,7,27
+TS0330E,max_cell_temperature,,592.453918457031,7,28
+TS0330E,max_cell_temperature_sensor_name,,TK2,7,29
+TS0330E,max vent gas temperature,,1496.82982560426,7,30
+TS0330E,max gas temperature,,66.4979400634766,7,31
+TS0330E,max over pressure,bar,0.384714742552999,7,32
+TS0330E,first venting n,mol,0,7,33
+TS0330E,second venting n,,0.315408437009977,7,34
+TS0330E,temperature of produced not condensated gas,°C,33.1906277154401,7,37
+TS0330E,max rate 50per pressure corrected,mol/s,0.630816874019955,7,39
+TS0330E,max rate 90per pressure corrected,,0.567735186617959,7,40
+TS0330E,min_time_50per_pressure,s,0.25,7,41
+TS0330E,min_time_90per_pressure,,0.5,7,42
+TS0330E,Max_Rate_50per_Pressure_Corrected_SATP,l/s (SATP),15.3919317260869,7,43
+TS0330E,Max_Rate_90per_Pressure_Corrected_SATP,,13.8527385534782,7,44
+TS0330E,post_thermal_runaway_amount_of_gas,mol,7.36447886887744,7,79
+TS0330F,experiment designation,,TS0330F,8,0
+TS0330F,cell_type_id,,BAK_N21700CG-50,8,5
+TS0330F,soc,%,60,8,14
+TS0330F,voltage_before_TR,V,3.82998888098996,8,20
+TS0330F,CellVoltageDropFiftyPer_CellCaseT,°C,130.728271484375,8,21
+TS0330F,FiveSecBefNinetyPerSecVentStart CellCaseT,,179.232666015625,8,22
+TS0330F,OneSecBefNinetyPerSecVentStart_CellSurfMaxT,,182.768371582031,8,23
+TS0330F,OneSecBefNinetyPerSecVentStart_CellSurfMaxTSensorCapt,,TK2,8,24
+TS0330F,FiveSecBefNinetyPerSecVentStart_CellSurfMaxT,,179.232666015625,8,25
+TS0330F,FiveSecBefNinetyPerSecVentStart_CellSurfMaxTSensorCapt,,TK2,8,26
+TS0330F,NinetyPerSecVentStart_CellCaseT,,184.278533935547,8,27
+TS0330F,max_cell_temperature,,598.435852050781,8,28
+TS0330F,max_cell_temperature_sensor_name,,TK2,8,29
+TS0330F,max vent gas temperature,,1465.90771484375,8,30
+TS0330F,max gas temperature,,69.5444641113281,8,31
+TS0330F,max over pressure,bar,0.377305815568007,8,32
+TS0330F,first venting n,mol,0,8,33
+TS0330F,second venting n,,0.307763081493975,8,34
+TS0330F,temperature of produced not condensated gas,°C,34.8508131482251,8,37
+TS0330F,max rate 50per pressure corrected,mol/s,0.591864584447125,8,39
+TS0330F,max rate 90per pressure corrected,,0.543109045369582,8,40
+TS0330F,min_time_50per_pressure,s,0.259994506835938,8,41
+TS0330F,min_time_90per_pressure,,0.510002136230469,8,42
+TS0330F,Max_Rate_50per_Pressure_Corrected_SATP,l/s (SATP),14.4414958605098,8,43
+TS0330F,Max_Rate_90per_Pressure_Corrected_SATP,,13.2518607070178,8,44
+TS0330F,post_thermal_runaway_amount_of_gas,mol,7.66741336684405,8,79
+TS0330G,experiment designation,,TS0330G,9,0
+TS0330G,cell_type_id,,BAK_N21700CG-50,9,5
+TS0330G,soc,%,60,9,14
+TS0330G,voltage_before_TR,V,3.8287960109206,9,20
+TS0330G,CellVoltageDropFiftyPer_CellCaseT,°C,130.239517211914,9,21
+TS0330G,FiveSecBefNinetyPerSecVentStart CellCaseT,,,9,22
+TS0330G,OneSecBefNinetyPerSecVentStart_CellSurfMaxT,,0,9,23
+TS0330G,OneSecBefNinetyPerSecVentStart_CellSurfMaxTSensorCapt,,none,9,24
+TS0330G,FiveSecBefNinetyPerSecVentStart_CellSurfMaxT,,0,9,25
+TS0330G,FiveSecBefNinetyPerSecVentStart_CellSurfMaxTSensorCapt,,none,9,26
+TS0330G,NinetyPerSecVentStart_CellCaseT,,,9,27
+TS0330G,max_cell_temperature,,146.881805419922,9,28
+TS0330G,max_cell_temperature_sensor_name,,TK2,9,29
+TS0330G,max vent gas temperature,,1277.21166992188,9,30
+TS0330G,max gas temperature,,89.9508209228516,9,31
+TS0330G,max over pressure,bar,0.371494684604857,9,32
+TS0330G,first venting n,mol,0,9,33
+TS0330G,second venting n,,0.28823540638273,9,34
+TS0330G,temperature of produced not condensated gas,°C,37.1866021733484,9,37
+TS0330G,max rate 50per pressure corrected,mol/s,0.655076834259209,9,39
+TS0330G,max rate 90per pressure corrected,,0.489457477786282,9,40
+TS0330G,min_time_50per_pressure,s,0.220001220703125,9,41
+TS0330G,min_time_90per_pressure,,0.529998779296875,9,42
+TS0330G,Max_Rate_50per_Pressure_Corrected_SATP,l/s (SATP),15.9838747559247,9,43
+TS0330G,Max_Rate_90per_Pressure_Corrected_SATP,,11.9427624579853,9,44
+TS0330G,post_thermal_runaway_amount_of_gas,mol,7.94251542262932,9,79
+TS0330H,experiment designation,,TS0330H,10,0
+TS0330H,cell_type_id,,BAK_N21700CG-50,10,5
+TS0330H,soc,%,60,10,14
+TS0330H,voltage_before_TR,V,3.83104191124439,10,20
+TS0330H,CellVoltageDropFiftyPer_CellCaseT,°C,127.460014343262,10,21
+TS0330H,FiveSecBefNinetyPerSecVentStart CellCaseT,,180.082122802734,10,22
+TS0330H,OneSecBefNinetyPerSecVentStart_CellSurfMaxT,,183.089111328125,10,23
+TS0330H,OneSecBefNinetyPerSecVentStart_CellSurfMaxTSensorCapt,,TK2,10,24
+TS0330H,FiveSecBefNinetyPerSecVentStart_CellSurfMaxT,,180.082122802734,10,25
+TS0330H,FiveSecBefNinetyPerSecVentStart_CellSurfMaxTSensorCapt,,TK2,10,26
+TS0330H,NinetyPerSecVentStart_CellCaseT,,184.385192871094,10,27
+TS0330H,max_cell_temperature,,632.451293945313,10,28
+TS0330H,max_cell_temperature_sensor_name,,TK2,10,29
+TS0330H,max vent gas temperature,,1290.08068847656,10,30
+TS0330H,max gas temperature,,173.294067382813,10,31
+TS0330H,max over pressure,bar,0.327106232423049,10,32
+TS0330H,first venting n,mol,0,10,33
+TS0330H,second venting n,,0.240487329662015,10,34
+TS0330H,temperature of produced not condensated gas,°C,42.9522138133191,10,37
+TS0330H,max rate 50per pressure corrected,mol/s,0.400808138872128,10,39
+TS0330H,max rate 90per pressure corrected,,0.318291911118869,10,40
+TS0330H,min_time_50per_pressure,s,0.300003051757813,10,41
+TS0330H,min_time_90per_pressure,,0.680000305175781,10,42
+TS0330H,Max_Rate_50per_Pressure_Corrected_SATP,l/s (SATP),9.77971858847992,10,43
+TS0330H,Max_Rate_90per_Pressure_Corrected_SATP,,7.7663226313004,10,44
+TS0330H,post_thermal_runaway_amount_of_gas,mol,7.93768549022002,10,79
+average,experiment designation,,average,11,0
+average,cell_type_id,,,11,5
+average,soc,%,,11,14
+average,voltage_before_TR,V,,11,20
+average,CellVoltageDropFiftyPer_CellCaseT,°C,128.0151653289796,11,21
+average,FiveSecBefNinetyPerSecVentStart CellCaseT,,,11,22
+average,OneSecBefNinetyPerSecVentStart_CellSurfMaxT,,,11,23
+average,OneSecBefNinetyPerSecVentStart_CellSurfMaxTSensorCapt,,,11,24
+average,FiveSecBefNinetyPerSecVentStart_CellSurfMaxT,,,11,25
+average,FiveSecBefNinetyPerSecVentStart_CellSurfMaxTSensorCapt,,,11,26
+average,NinetyPerSecVentStart_CellCaseT,,179.61330740792414,11,27
+average,max_cell_temperature,,539.4010353088381,11,28
+average,max_cell_temperature_sensor_name,,,11,29
+average,max vent gas temperature,,1275.524168874362,11,30
+average,max gas temperature,,,11,31
+average,max over pressure,bar,,11,32
+average,first venting n,mol,,11,33
+average,second venting n,,,11,34
+average,temperature of produced not condensated gas,°C,,11,37
+average,max rate 50per pressure corrected,mol/s,,11,39
+average,max rate 90per pressure corrected,,,11,40
+average,min_time_50per_pressure,s,,11,41
+average,min_time_90per_pressure,,,11,42
+average,Max_Rate_50per_Pressure_Corrected_SATP,l/s (SATP),16.166718616388884,11,43
+average,Max_Rate_90per_Pressure_Corrected_SATP,,,11,44
+average,post_thermal_runaway_amount_of_gas,mol,,11,79
+std,experiment designation,,std,12,0
+std,cell_type_id,,,12,5
+std,soc,%,,12,14
+std,voltage_before_TR,V,,12,20
+std,CellVoltageDropFiftyPer_CellCaseT,°C,3.7176898686136255,12,21
+std,FiveSecBefNinetyPerSecVentStart CellCaseT,,,12,22
+std,OneSecBefNinetyPerSecVentStart_CellSurfMaxT,,,12,23
+std,OneSecBefNinetyPerSecVentStart_CellSurfMaxTSensorCapt,,,12,24
+std,FiveSecBefNinetyPerSecVentStart_CellSurfMaxT,,,12,25
+std,FiveSecBefNinetyPerSecVentStart_CellSurfMaxTSensorCapt,,,12,26
+std,NinetyPerSecVentStart_CellCaseT,,21.088361305455958,12,27
+std,max_cell_temperature,,160.17243788303898,12,28
+std,max_cell_temperature_sensor_name,,,12,29
+std,max vent gas temperature,,228.07886307103826,12,30
+std,max gas temperature,,,12,31
+std,max over pressure,bar,,12,32
+std,first venting n,mol,,12,33
+std,second venting n,,,12,34
+std,temperature of produced not condensated gas,°C,,12,37
+std,max rate 50per pressure corrected,mol/s,,12,39
+std,max rate 90per pressure corrected,,,12,40
+std,min_time_50per_pressure,s,,12,41
+std,min_time_90per_pressure,,,12,42
+std,Max_Rate_50per_Pressure_Corrected_SATP,l/s (SATP),7.229227326223584,12,43
+std,Max_Rate_90per_Pressure_Corrected_SATP,,,12,44
+std,post_thermal_runaway_amount_of_gas,mol,,12,79
+relative std,experiment designation,,relative std,13,0
+relative std,cell_type_id,,,13,5
+relative std,soc,%,,13,14
+relative std,voltage_before_TR,V,,13,20
+relative std,CellVoltageDropFiftyPer_CellCaseT,°C,0.029041011344708458,13,21
+relative std,FiveSecBefNinetyPerSecVentStart CellCaseT,,,13,22
+relative std,OneSecBefNinetyPerSecVentStart_CellSurfMaxT,,,13,23
+relative std,OneSecBefNinetyPerSecVentStart_CellSurfMaxTSensorCapt,,,13,24
+relative std,FiveSecBefNinetyPerSecVentStart_CellSurfMaxT,,,13,25
+relative std,FiveSecBefNinetyPerSecVentStart_CellSurfMaxTSensorCapt,,,13,26
+relative std,NinetyPerSecVentStart_CellCaseT,,0.11740979334878383,13,27
+relative std,max_cell_temperature,,0.2969449952785705,13,28
+relative std,max_cell_temperature_sensor_name,,,13,29
+relative std,max vent gas temperature,,0.17881187094425322,13,30
+relative std,max gas temperature,,,13,31
+relative std,max over pressure,bar,,13,32
+relative std,first venting n,mol,,13,33
+relative std,second venting n,,,13,34
+relative std,temperature of produced not condensated gas,°C,,13,37
+relative std,max rate 50per pressure corrected,mol/s,,13,39
+relative std,max rate 90per pressure corrected,,,13,40
+relative std,min_time_50per_pressure,s,,13,41
+relative std,min_time_90per_pressure,,,13,42
+relative std,Max_Rate_50per_Pressure_Corrected_SATP,l/s (SATP),0.44716726367062587,13,43
+relative std,Max_Rate_90per_Pressure_Corrected_SATP,,,13,44
+relative std,post_thermal_runaway_amount_of_gas,mol,,13,79

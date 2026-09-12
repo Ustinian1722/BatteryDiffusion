@@ -1,0 +1,129 @@
+experiment,column_index,technical_name,description
+TS0330A,0,time,
+TS0330A,1,I61,Pressure
+TS0330A,2,Pressure Cassette,
+TS0330A,3,n,amount of gas
+TS0330A,4,U73,Voltage Z3808
+TS0330A,5,TC2,Cell case Z3808
+TS0330A,6,TC1,Heater of Z3808
+TS0330A,7,TC3,Ventgas
+TS0330A,8,TC4,Ventgas
+TS0330A,9,TC47,Reactor gas
+TS0330A,10,TC48,Reactor gas
+TS0330A,11,TC49,Reactor gas
+TS0330A,12,TC50,Reactor gas
+TS0330A,13,Heater Power,Heater Power
+TS0330A,14,Heater Current,
+TS0330A,15,Heater Voltage,
+TS0330B,0,time,
+TS0330B,1,I61,Pressure
+TS0330B,2,Pressure Cassette,
+TS0330B,3,n,amount of gas
+TS0330B,4,U74,Voltage Z3809
+TS0330B,5,TC6,Cell case Z3809
+TS0330B,6,TC5,Heater of Z3809
+TS0330B,7,TC7,Ventgas
+TS0330B,8,TC8,Ventgas
+TS0330B,9,TC47,Reactor gas
+TS0330B,10,TC48,Reactor gas
+TS0330B,11,TC49,Reactor gas
+TS0330B,12,TC50,Reactor gas
+TS0330B,13,Heater Power,Heater Power
+TS0330B,14,Heater Current,
+TS0330B,15,Heater Voltage,
+TS0330C,0,time,
+TS0330C,1,I61,Pressure
+TS0330C,2,Pressure Cassette,
+TS0330C,3,n,amount of gas
+TS0330C,4,U75,Voltage Z3810
+TS0330C,5,TC10,Cell case Z3810
+TS0330C,6,TC9,Heater of Z3810
+TS0330C,7,TC11,Ventgas
+TS0330C,8,TC12,Ventgas
+TS0330C,9,TC47,Reactor gas
+TS0330C,10,TC48,Reactor gas
+TS0330C,11,TC49,Reactor gas
+TS0330C,12,TC50,Reactor gas
+TS0330C,13,Heater Power,Heater Power
+TS0330C,14,Heater Current,
+TS0330C,15,Heater Voltage,
+TS0330D,0,time,
+TS0330D,1,I61,Pressure
+TS0330D,2,Pressure Cassette,
+TS0330D,3,n,amount of gas
+TS0330D,4,U76,Voltage Z3811
+TS0330D,5,TC14,Cell case Z3811
+TS0330D,6,TC13,Heater of Z3811
+TS0330D,7,TC15,Ventgas
+TS0330D,8,TC16,Ventgas
+TS0330D,9,TC47,Reactor gas
+TS0330D,10,TC48,Reactor gas
+TS0330D,11,TC49,Reactor gas
+TS0330D,12,TC50,Reactor gas
+TS0330D,13,Heater Power,Heater Power
+TS0330D,14,Heater Current,
+TS0330D,15,Heater Voltage,
+TS0330E,0,time,
+TS0330E,1,I61,Pressure
+TS0330E,2,Pressure Cassette,
+TS0330E,3,n,amount of gas
+TS0330E,4,U77,Voltage Z3812
+TS0330E,5,TC18,Cell case Z3812
+TS0330E,6,TC17,Heater of Z3812
+TS0330E,7,TC19,Ventgas
+TS0330E,8,TC20,Ventgas
+TS0330E,9,TC47,Reactor gas
+TS0330E,10,TC48,Reactor gas
+TS0330E,11,TC49,Reactor gas
+TS0330E,12,TC50,Reactor gas
+TS0330E,13,Heater Power,Heater Power
+TS0330E,14,Heater Current,
+TS0330E,15,Heater Voltage,
+TS0330F,0,time,
+TS0330F,1,I61,Pressure
+TS0330F,2,Pressure Cassette,
+TS0330F,3,n,amount of gas
+TS0330F,4,U78,Voltage Z3813
+TS0330F,5,TC22,Cell case Z3813
+TS0330F,6,TC21,Heater of Z3813
+TS0330F,7,TC23,Ventgas
+TS0330F,8,TC24,Ventgas
+TS0330F,9,TC47,Reactor gas
+TS0330F,10,TC48,Reactor gas
+TS0330F,11,TC49,Reactor gas
+TS0330F,12,TC50,Reactor gas
+TS0330F,13,Heater Power,Heater Power
+TS0330F,14,Heater Current,
+TS0330F,15,Heater Voltage,
+TS0330G,0,time,
+TS0330G,1,I61,Pressure
+TS0330G,2,Pressure Cassette,
+TS0330G,3,n,amount of gas
+TS0330G,4,U79,Voltage Z3814
+TS0330G,5,TC26,Cell case Z3814
+TS0330G,6,TC25,Heater of Z3814
+TS0330G,7,TC27,Ventgas
+TS0330G,8,TC28,Ventgas
+TS0330G,9,TC47,Reactor gas
+TS0330G,10,TC48,Reactor gas
+TS0330G,11,TC49,Reactor gas
+TS0330G,12,TC50,Reactor gas
+TS0330G,13,Heater Power,Heater Power
+TS0330G,14,Heater Current,
+TS0330G,15,Heater Voltage,
+TS0330H,0,time,
+TS0330H,1,I97,Pressure
+TS0330H,2,Pressure Cassette,
+TS0330H,3,n,amount of gas
+TS0330H,4,U80,Voltage Z3815
+TS0330H,5,TC30,Cell case Z3815
+TS0330H,6,TC29,Heater of Z3815
+TS0330H,7,TC31,Ventgas
+TS0330H,8,TC32,Ventgas
+TS0330H,9,TC47,Reactor gas
+TS0330H,10,TC48,Reactor gas
+TS0330H,11,TC49,Reactor gas
+TS0330H,12,TC50,Reactor gas
+TS0330H,13,Heater Power,Heater Power
+TS0330H,14,Heater Current,
+TS0330H,15,Heater Voltage,

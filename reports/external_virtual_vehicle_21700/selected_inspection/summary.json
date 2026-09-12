@@ -2,6 +2,9 @@
   "selected_files": 18,
   "workbook_sheets": 17,
   "keyword_rows": 42,
+  "event_rows": 32,
+  "export_channels": 128,
+  "report_selected_cells": 286,
   "selected_paths": [
     "Plots_and_raw_data/TS0330A/export_TS0330A.xlsx",
     "Plots_and_raw_data/TS0330A/order_TS0330A.xlsx",
