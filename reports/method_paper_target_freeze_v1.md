@@ -35,33 +35,33 @@ This matches the field trend toward remaining-time-to-TR regression and multi-le
 
 ## Proposed model target
 
-Working name: **PMH-Net — Precursor-aware Multimodal Hazard Network**.
+Working name: **LATH-Net — Lag-Aware Thermo-pressure Hazard Network**.
 
-The architecture is deliberately task-specific rather than a generic model soup.
+The name and novelty emphasis are intentionally centered on **lead-lag multimodal precursor modeling + event-time hazard consistency**, not generic “multi-scale + attention”. Recent MSTA-Net work already uses parallel multi-scale branches and adaptive fusion, so those ingredients alone are not claimed as the novelty here.
 
-### M1. Dual-timescale causal encoders
+### M1. Modality-specific dual-timescale causal encoders
 
-Temperature and pressure are encoded in separate causal temporal branches. Each branch combines short-receptive-field and dilated long-receptive-field convolutions. The goal is to preserve the different temporal scales of rapid mechanical/gas-pressure changes and slower thermal accumulation.
+Temperature and pressure are encoded in separate causal temporal branches. Each branch combines short-receptive-field and dilated long-receptive-field convolutions. This is a supporting backbone component for separating rapid mechanical/gas-pressure changes from slower thermal accumulation, rather than the headline novelty by itself.
 
-### M2. Lag-aware cross-modal gated fusion
+### M2. Lag-aware thermo-pressure gated fusion
 
-The two modality streams are not concatenated directly. A causal cross-modal fusion block allows each modality to condition the other using only present/past information and learns a reliability gate. This is intended to capture precursor lead-lag structure while suppressing apparatus-specific or noisy mechanical information.
+The two modality streams are not concatenated directly. A causal lag bank explicitly aligns current thermal features against multiple **past** pressure states, learns the relevant precursor lag, and then applies a reliability gate before fusion. The intended role is to exploit thermo-pressure lead-lag structure while suppressing apparatus-specific or noisy mechanical information.
 
 ### M3. Monotone multi-horizon hazard head
 
-Instead of a single binary classifier, the model predicts discrete future-event hazards over ordered time bins. Cumulative event probability is mathematically monotone with forecast horizon. The same head yields a continuous expected time-to-vent estimate.
+Instead of a single binary classifier, the model jointly predicts continuous TTV and ordered cumulative event-risk at multiple future horizons. The risk logits are constrained to be monotone with increasing horizon, preventing logically inconsistent outputs such as lower probability at a longer forecast horizon.
 
 ### M4. Event-progress regularization
 
-Within the same real experiment, a window closer to first vent should not be assigned systematically lower cumulative risk than a clearly earlier window. A pairwise progress-ranking term is added only within training experiments. This supplies weak event-order supervision without using cycle/test identifiers as predictor inputs.
+Within the same real experiment, a window closer to first vent should not be assigned a longer remaining time / lower event progression than a clearly earlier window. A pairwise progress-ranking term is added only within training experiments. Experiment identity is used only to form training pairs and is never provided as a predictor input.
 
 ## Why this is the target
 
 The design addresses three gaps visible in the literature and in the current data:
 
-- single-backbone models often mix fast precursor transients with slow thermal accumulation;
-- naive early fusion does not model thermo-pressure lead-lag/reliability explicitly;
-- separate classification and remaining-time regressors can produce inconsistent warning outputs, whereas a hazard formulation unifies both.
+- a single generic temporal backbone can mix fast pressure precursors with slower thermal accumulation;
+- naive early fusion does not explicitly model thermo-pressure lead-lag or mechanical-signal reliability;
+- separate classification and remaining-time regressors can produce inconsistent warning outputs, whereas a monotone hazard-assisted formulation connects continuous remaining time with ordered warning horizons.
 
 RA-CDiff is attached only after the model protocol is fixed, as a scarcity-training option.
 
@@ -80,17 +80,17 @@ Baselines to implement:
 - Attention-GRU;
 - TCN-Transformer (strong recent hybrid baseline).
 
-The main architecture table must compare models under the **same training-data regime**. Augmentation is not allowed to be a hidden advantage of Proposed.
+The main architecture table must compare models under the **same real-only training-data regime**. Augmentation is not allowed to be a hidden advantage of Proposed.
 
 ## Ablations
 
 Ablations are frozen before headline model scores:
 
-- PMH-Net full;
+- LATH-Net full;
 - w/o pressure (temperature only);
 - w/o dual-timescale encoder (single-scale causal encoder);
-- w/o lag-aware cross-modal gate (plain concatenation);
-- w/o hazard head (direct TTV regression + independent binary classifier);
+- w/o lag-aware cross-modal gate (plain synchronous concatenation);
+- w/o monotone hazard auxiliary head (direct TTV regression only);
 - w/o progress-ranking loss;
 - optionally pressure only as a signal-value diagnostic.
 
@@ -132,14 +132,14 @@ Statistical unit is always the independent destructive experiment, never the num
 
 ## Paper claim hierarchy
 
-1. **Main method claim:** PMH-Net improves causal pre-vent prognostics over standard and strong hybrid temporal baselines.
-2. **Mechanism claim:** modality-specific timescale encoding + causal cross-modal gating + unified hazard modeling each contribute measurably.
-3. **Scarcity claim:** RA-CDiff is a supporting training strategy that can improve PMH-Net when the number of real destructive experiments is small.
+1. **Main method claim:** LATH-Net improves causal pre-vent prognostics over standard and strong hybrid temporal baselines.
+2. **Mechanism claim:** explicit thermo-pressure lag alignment, modality-specific temporal encoding, monotone hazard assistance, and event-progress regularization contribute measurably.
+3. **Scarcity claim:** RA-CDiff is a supporting training strategy that can improve LATH-Net when the number of real destructive experiments is small.
 4. **Generalization claim:** external results are reported as domain-shift evidence and never used for task/model retuning.
 
 ## Stop condition for strategic reconsideration
 
 Do not change the paper direction because a single fold/model is weak. Reconsider only if either:
 
-- the full PMH-Net cannot consistently outperform strong baselines on experiment-level TTV/multi-horizon metrics after reasonable, predeclared tuning; or
+- the full LATH-Net cannot consistently outperform strong baselines on experiment-level TTV/multi-horizon metrics after reasonable, predeclared tuning; or
 - the proposed modules fail ablation in aggregate, leaving no defensible architectural contribution.
