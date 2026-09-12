@@ -1,0 +1,89 @@
+name: Diffusion augmentation v2
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/train_diffusion_v2.py'
+      - '.github/workflows/augmentation-v2.yml'
+
+concurrency:
+  group: augmentation-v2-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  augment-v2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pandas openpyxl
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Refresh age-stage windows
+        run: |
+          rm -rf data/processed/augmentation_v1
+          python scripts/prepare_aug_windows.py \
+            --root data/raw/osf_c2hnq \
+            --out data/processed/augmentation_v1 \
+            --window 256 --stride 64
+          cat data/processed/augmentation_v1/cohort_summary.csv
+
+      - name: Train v2 generator
+        run: |
+          rm -rf data/synthetic/v2_cell_2170
+          python scripts/train_diffusion_v2.py \
+            --input data/processed/augmentation_v1/cell_2170_temp_pressure.npz \
+            --out data/synthetic/v2_cell_2170 \
+            --steps 1400 \
+            --diffusion-steps 60 \
+            --batch-size 64 \
+            --hidden 32 \
+            --candidates 300 \
+            --seed 2026
+          cat data/synthetic/v2_cell_2170/report.md
+
+      - name: Evaluate v2 accepted samples
+        run: |
+          rm -rf reports/augmentation_quality_v2
+          python scripts/evaluate_augmentation_quality.py \
+            --real data/processed/augmentation_v1/cell_2170_temp_pressure.npz \
+            --synthetic data/synthetic/v2_cell_2170/synthetic_windows.npz \
+            --quality-csv data/synthetic/v2_cell_2170/synthetic_quality.csv \
+            --pilot-json data/synthetic/v2_cell_2170/report.json \
+            --out reports/augmentation_quality_v2
+          cat reports/augmentation_quality_v2/augmentation_quality.md
+
+      - name: Remove checkpoint before commit
+        run: rm -f data/synthetic/v2_cell_2170/model.pt
+
+      - name: Commit v2 outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/processed/augmentation_v1 data/synthetic/v2_cell_2170 reports/augmentation_quality_v2
+          if git diff --cached --quiet; then
+            echo 'No v2 changes to commit.'
+            exit 0
+          fi
+          git commit -m 'data: add cosine-balanced diffusion v2 augmentation'
+          git pull --rebase origin main
+          git push origin HEAD:main
