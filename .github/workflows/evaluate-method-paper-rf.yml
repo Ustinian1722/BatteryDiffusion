@@ -1,0 +1,37 @@
+name: Evaluate exact-fold RF method baseline
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/evaluate_method_paper_rf_baseline.py'
+      - '.github/workflows/evaluate-method-paper-rf.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy pandas requests remotezip openpyxl scikit-learn
+      - name: Run exact-fold RF baseline
+        run: python scripts/evaluate_method_paper_rf_baseline.py --out reports/method_paper_rf_baseline
+      - name: Commit result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/method_paper_rf_baseline
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'research: add exact-fold RF method-paper baseline'
+          git pull --rebase origin main
+          git push origin HEAD:main
