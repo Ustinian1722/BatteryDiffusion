@@ -1,0 +1,32 @@
+{
+  "heldout": "TS0330G",
+  "validation": "TS0330H",
+  "train_experiments": [
+    "TS0330A",
+    "TS0330B",
+    "TS0330C",
+    "TS0330D",
+    "TS0330E",
+    "TS0330F"
+  ],
+  "seeds": [
+    2026,
+    2027,
+    2028
+  ],
+  "window_s": 120,
+  "stride_s": 10,
+  "max_tau_s": 600,
+  "temp_cap_c": 150,
+  "lags_s": [
+    0,
+    2,
+    5,
+    10,
+    20,
+    30
+  ],
+  "input": "same measured T/P; precursor transforms internal",
+  "scaler_fit": "training experiments only",
+  "selection": "early stopping on validation experiment only"
+}
