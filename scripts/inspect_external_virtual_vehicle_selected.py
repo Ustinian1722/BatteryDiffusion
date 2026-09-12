@@ -25,7 +25,11 @@ KEYWORDS=("time","temp","temperature","pressure","press","thermal runaway","runa
 def record_and_url():
     r=requests.get(API,timeout=60,headers=HEADERS); r.raise_for_status(); rec=r.json()
     files=rec.get('files') or []; z=next(f for f in files if str(f.get('key','')).lower().endswith('.zip'))
-    return rec,(z.get('links') or {}).get('content')
+    links=z.get('links') or {}
+    url=links.get('content') or links.get('self')
+    if not url:
+        raise RuntimeError(f"No content/self download URL in Zenodo file links: {sorted(links)}")
+    return rec,url
 
 
 def normalize(v):
