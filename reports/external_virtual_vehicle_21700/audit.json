@@ -1,0 +1,21 @@
+{
+  "record_id": "18849418",
+  "doi": "10.5281/zenodo.18849418",
+  "title": "Report Package \u2013 Thermal Runaway of Li-Ion cell BAK N21700CG-50 at 60% SOC",
+  "publication_date": "2026-04-14",
+  "archive_key": "report_BAK_N21700CG-50_60SOC_TS0330.zip",
+  "archive_bytes": 4958096649,
+  "archive_checksum": "md5:2b41d722bd2488e7ef621cc6a42a2139",
+  "central_directory_status": "success",
+  "head_status": 200,
+  "accept_ranges": null,
+  "content_length_head": "4958096649",
+  "archive_entries": 817,
+  "candidate_data_files": 20,
+  "category_counts": {
+    "image": 596,
+    "raw_data": 218,
+    "report_or_result": 2,
+    "other": 1
+  }
+}
