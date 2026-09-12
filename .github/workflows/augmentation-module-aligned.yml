@@ -1,0 +1,83 @@
+name: Aligned module RA-CDiff augmentation
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/prepare_module_windows.py'
+      - 'scripts/train_diffusion_v3_anchored.py'
+      - 'scripts/evaluate_augmentation_quality.py'
+      - '.github/workflows/augmentation-module-aligned.yml'
+
+concurrency:
+  group: augmentation-module-aligned-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  augment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pandas openpyxl
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Prepare aligned module cohort
+        run: |
+          rm -rf data/processed/module_aligned_v1
+          python scripts/prepare_module_windows.py \
+            --out data/processed/module_aligned_v1 \
+            --window 256 --stride 64
+          cat data/processed/module_aligned_v1/summary.json
+          cat data/processed/module_aligned_v1/alignment_audit.json
+      - name: Train module real-anchored diffusion
+        run: |
+          rm -rf data/synthetic/module_racdiff_v1
+          python scripts/train_diffusion_v3_anchored.py \
+            --input data/processed/module_aligned_v1/module_temp4_force.npz \
+            --out data/synthetic/module_racdiff_v1 \
+            --steps 1200 \
+            --diffusion-steps 100 \
+            --batch-size 64 \
+            --hidden 32 \
+            --candidates 360 \
+            --noise-min 0.15 \
+            --noise-max 0.40 \
+            --seed 2028
+          cat data/synthetic/module_racdiff_v1/report.md
+      - name: Evaluate module synthetic windows
+        run: |
+          rm -rf reports/augmentation_quality_module
+          python scripts/evaluate_augmentation_quality.py \
+            --real data/processed/module_aligned_v1/module_temp4_force.npz \
+            --synthetic data/synthetic/module_racdiff_v1/synthetic_windows.npz \
+            --quality-csv data/synthetic/module_racdiff_v1/synthetic_quality.csv \
+            --pilot-json data/synthetic/module_racdiff_v1/report.json \
+            --out reports/augmentation_quality_module
+          cat reports/augmentation_quality_module/augmentation_quality.md
+      - name: Remove checkpoint before commit
+        run: rm -f data/synthetic/module_racdiff_v1/model.pt
+      - name: Commit outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/processed/module_aligned_v1 data/synthetic/module_racdiff_v1 reports/augmentation_quality_module
+          if git diff --cached --quiet; then
+            echo 'No module augmentation changes to commit.'
+            exit 0
+          fi
+          git commit -m 'data: add aligned module RA-CDiff augmentation'
+          git pull --rebase origin main
+          git push origin HEAD:main
