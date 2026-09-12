@@ -1,0 +1,174 @@
+name: Evaluate Virtual Vehicle TTE augmentation
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/prepare_virtual_vehicle_tte_aug_fold.py'
+      - 'scripts/filter_virtual_vehicle_tte_synthetic.py'
+      - 'scripts/evaluate_virtual_vehicle_tte_aug_fold.py'
+      - 'reports/virtual_vehicle_time_to_vent_augmentation_protocol.md'
+      - '.github/workflows/evaluate-virtual-vehicle-tte-augmentation.yml'
+
+permissions:
+  contents: write
+
+env:
+  PYTHONUNBUFFERED: '1'
+
+jobs:
+  fold:
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        include:
+          - {tag: A_BC, held: TS0330A, t1: TS0330B, t2: TS0330C, seed: 5101}
+          - {tag: A_DE, held: TS0330A, t1: TS0330D, t2: TS0330E, seed: 5102}
+          - {tag: A_FG, held: TS0330A, t1: TS0330F, t2: TS0330G, seed: 5103}
+          - {tag: B_CD, held: TS0330B, t1: TS0330C, t2: TS0330D, seed: 5111}
+          - {tag: B_EF, held: TS0330B, t1: TS0330E, t2: TS0330F, seed: 5112}
+          - {tag: B_GH, held: TS0330B, t1: TS0330G, t2: TS0330H, seed: 5113}
+          - {tag: C_DE, held: TS0330C, t1: TS0330D, t2: TS0330E, seed: 5121}
+          - {tag: C_FG, held: TS0330C, t1: TS0330F, t2: TS0330G, seed: 5122}
+          - {tag: C_HA, held: TS0330C, t1: TS0330H, t2: TS0330A, seed: 5123}
+          - {tag: D_EF, held: TS0330D, t1: TS0330E, t2: TS0330F, seed: 5131}
+          - {tag: D_GH, held: TS0330D, t1: TS0330G, t2: TS0330H, seed: 5132}
+          - {tag: D_AB, held: TS0330D, t1: TS0330A, t2: TS0330B, seed: 5133}
+          - {tag: E_FG, held: TS0330E, t1: TS0330F, t2: TS0330G, seed: 5141}
+          - {tag: E_HA, held: TS0330E, t1: TS0330H, t2: TS0330A, seed: 5142}
+          - {tag: E_BC, held: TS0330E, t1: TS0330B, t2: TS0330C, seed: 5143}
+          - {tag: F_GH, held: TS0330F, t1: TS0330G, t2: TS0330H, seed: 5151}
+          - {tag: F_AB, held: TS0330F, t1: TS0330A, t2: TS0330B, seed: 5152}
+          - {tag: F_CD, held: TS0330F, t1: TS0330C, t2: TS0330D, seed: 5153}
+          - {tag: G_HA, held: TS0330G, t1: TS0330H, t2: TS0330A, seed: 5161}
+          - {tag: G_BC, held: TS0330G, t1: TS0330B, t2: TS0330C, seed: 5162}
+          - {tag: G_DE, held: TS0330G, t1: TS0330D, t2: TS0330E, seed: 5163}
+          - {tag: H_AB, held: TS0330H, t1: TS0330A, t2: TS0330B, seed: 5171}
+          - {tag: H_CD, held: TS0330H, t1: TS0330C, t2: TS0330D, seed: 5172}
+          - {tag: H_EF, held: TS0330H, t1: TS0330E, t2: TS0330F, seed: 5173}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pandas requests remotezip openpyxl scikit-learn
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Prepare strict TTE fold
+        run: |
+          mkdir -p work/vv_tte/${{ matrix.tag }}/fold out
+          python scripts/prepare_virtual_vehicle_tte_aug_fold.py \
+            --heldout ${{ matrix.held }} --train ${{ matrix.t1 }} ${{ matrix.t2 }} \
+            --out work/vv_tte/${{ matrix.tag }}/fold
+      - name: Fit training-only tertile-conditioned RA-CDiff
+        run: |
+          python scripts/train_diffusion_v3_anchored.py \
+            --input work/vv_tte/${{ matrix.tag }}/fold/train_generator.npz \
+            --out work/vv_tte/${{ matrix.tag }}/syn \
+            --steps 600 --diffusion-steps 100 --batch-size 64 --hidden 24 \
+            --candidates 180 --noise-min 0.08 --noise-max 0.25 \
+            --seed ${{ matrix.seed }}
+      - name: Preserve anchor labels and compare augmentation
+        run: |
+          python scripts/filter_virtual_vehicle_tte_synthetic.py \
+            --synthetic work/vv_tte/${{ matrix.tag }}/syn/synthetic_windows.npz \
+            --train-real work/vv_tte/${{ matrix.tag }}/fold/train_real.npz \
+            --out work/vv_tte/${{ matrix.tag }}/syn_task.npz --seed ${{ matrix.seed }} --temp-cap 150
+          python scripts/evaluate_virtual_vehicle_tte_aug_fold.py \
+            --fold-dir work/vv_tte/${{ matrix.tag }}/fold \
+            --synthetic work/vv_tte/${{ matrix.tag }}/syn_task.npz \
+            --out out/${{ matrix.tag }}.csv --seed ${{ matrix.seed }}
+          cp out/${{ matrix.tag }}.json out/${{ matrix.tag }}_audit.json
+          cp work/vv_tte/${{ matrix.tag }}/fold/summary.json out/${{ matrix.tag }}_fold.json
+          cp work/vv_tte/${{ matrix.tag }}/syn/report.json out/${{ matrix.tag }}_generator.json
+          cp work/vv_tte/${{ matrix.tag }}/syn_task.json out/${{ matrix.tag }}_filter.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vv-tte-${{ matrix.tag }}
+          path: out/
+          retention-days: 2
+
+  aggregate:
+    needs: fold
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install pandas numpy
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: vv-tte-*
+          path: collected
+          merge-multiple: true
+      - name: Aggregate by held-out real experiment
+        run: |
+          rm -rf reports/virtual_vehicle_tte_aug_utility
+          mkdir -p reports/virtual_vehicle_tte_aug_utility/fold_audits
+          cp collected/*_audit.json collected/*_fold.json collected/*_generator.json collected/*_filter.json reports/virtual_vehicle_tte_aug_utility/fold_audits/
+          python - <<'PY'
+          from pathlib import Path
+          import itertools, numpy as np, pandas as pd
+          src=Path('collected'); out=Path('reports/virtual_vehicle_tte_aug_utility')
+          files=sorted(p for p in src.glob('*.csv'))
+          df=pd.concat([pd.read_csv(p) for p in files],ignore_index=True)
+          df.to_csv(out/'all_pair_metrics.csv',index=False)
+          held=df.groupby(['heldout','method','model','representation']).agg(
+              pair_count=('train_experiments','size'),mae_s=('mae_s','mean'),rmse_s=('rmse_s','mean'),
+              medae_s=('medae_s','mean'),r2=('r2','mean'),bias_s=('bias_s','mean'),aug_mean=('n_aug','mean')).reset_index()
+          held.to_csv(out/'heldout_macro_over_pairs.csv',index=False)
+          macro=held.groupby(['method','model','representation']).agg(
+              mae_mean_s=('mae_s','mean'),mae_worst_s=('mae_s','max'),rmse_mean_s=('rmse_s','mean'),
+              medae_mean_s=('medae_s','mean'),r2_mean=('r2','mean')).reset_index()
+          macro.to_csv(out/'macro_metrics.csv',index=False)
+
+          h=held[(held.model=='huber') & (held.representation=='fusion_absolute')].pivot(index='heldout',columns='method',values=['mae_s','rmse_s','medae_s']).sort_index()
+          rng=np.random.default_rng(20260912); rows=[]
+          for a,b,label in [('racdiff','real_only','racdiff-real_only'),
+                            ('classical_anchor_matched','real_only','classical-real_only'),
+                            ('racdiff','classical_anchor_matched','racdiff-classical_anchor_matched')]:
+              for met in ('mae_s','rmse_s'):
+                  d=(h[(met,a)]-h[(met,b)]).to_numpy(float)
+                  boots=np.asarray([np.mean(rng.choice(d,size=len(d),replace=True)) for _ in range(20000)])
+                  lo,hi=np.quantile(boots,[.025,.975]); obs=abs(float(np.mean(d)))
+                  vals=[]
+                  for signs in itertools.product((-1.,1.),repeat=len(d)):
+                      vals.append(abs(float(np.mean(d*np.asarray(signs)))))
+                  p=float(np.mean(np.asarray(vals)>=obs-1e-15))
+                  rows.append({'contrast':label,'metric':met,'mean_delta_s':float(np.mean(d)),
+                               'ci95_low_s':float(lo),'ci95_high_s':float(hi),
+                               'improved_experiments':int((d<0).sum()),'n_experiments':len(d),'exact_signflip_p':p})
+          stat=pd.DataFrame(rows); stat.to_csv(out/'paired_headline_statistics.csv',index=False)
+
+          lines=['# Fold-safe RA-CDiff utility for time-to-vent regression','',
+                 'Frozen task: 120 s context, 0 < tau <=600 s to first package `vent_gas`, max input temperature <=150 C. Primary scarcity regime: two independent real training experiments. Synthetic continuous labels are inherited from unchanged real anchor times. Classical augmentation uses exactly the same anchors and tau labels as RA-CDiff.','',
+                 '| method | model | representation | mean MAE | worst MAE | mean RMSE | mean MedAE | mean R2 |','|---|---|---|---:|---:|---:|---:|---:|']
+          for _,r in macro.iterrows():
+              lines.append(f"| {r.method} | {r.model} | {r.representation} | {r.mae_mean_s:.1f} s | {r.mae_worst_s:.1f} s | {r.rmse_mean_s:.1f} s | {r.medae_mean_s:.1f} s | {r.r2_mean:.3f} |")
+          lines += ['', '## Headline paired statistics: Huber + fusion_absolute (n=8 real held-out experiments)','',
+                    '| contrast | metric | mean delta | 95% bootstrap CI | improved | exact sign-flip p |','|---|---|---:|---:|---:|---:|']
+          for _,r in stat.iterrows():
+              lines.append(f"| {r.contrast} | {r.metric} | {r.mean_delta_s:+.1f} s | [{r.ci95_low_s:+.1f}, {r.ci95_high_s:+.1f}] s | {int(r.improved_experiments)}/{int(r.n_experiments)} | {r.exact_signflip_p:.4f} |")
+          lines += ['', '## Guardrail','',
+                    'The generator never invents an event time: each local synthetic variant inherits its unchanged real anchor tau. Statistical n remains 8 independent destructive experiments.']
+          (out/'README.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
+          print('\n'.join(lines))
+          PY
+      - name: Commit TTE augmentation study
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/virtual_vehicle_tte_aug_utility
+          git commit -m 'research: evaluate fold-safe RA-CDiff for time-to-vent scarcity'
+          git pull --rebase origin main
+          git push origin HEAD:main
