@@ -1,0 +1,9 @@
+{
+  "input_accepted_quality_gate": 28,
+  "pass_task_guard": 23,
+  "retained_budgeted": 23,
+  "real_train_windows": 65,
+  "retained_positive": 6,
+  "retained_negative": 17,
+  "temp_cap_c": 150.0
+}
