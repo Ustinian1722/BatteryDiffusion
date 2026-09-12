@@ -1,0 +1,26 @@
+{
+  "heldout": "TS0330G",
+  "validation": "TS0330H",
+  "train_experiments": [
+    "TS0330A",
+    "TS0330B",
+    "TS0330C",
+    "TS0330D",
+    "TS0330E",
+    "TS0330F"
+  ],
+  "seeds": [
+    2026,
+    2027,
+    2028
+  ],
+  "window_s": 120,
+  "stride_s": 10,
+  "max_tau_s": 600,
+  "temp_cap_c": 150.0,
+  "scaler_fit": "training experiments only",
+  "selection": "validation experiment MAE only",
+  "augmentation": "none",
+  "loss": "SmoothL1 + 0.15 CEPA + 0.05 rank + 0.05 warning",
+  "predictive_alignment": "TTV and warning heads operate directly on the aligned 32-D bottleneck"
+}
