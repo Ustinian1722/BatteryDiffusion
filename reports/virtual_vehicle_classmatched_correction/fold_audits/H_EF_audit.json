@@ -1,0 +1,15 @@
+{
+  "heldout": "TS0330H",
+  "train_experiments": [
+    "TS0330E",
+    "TS0330F"
+  ],
+  "racdiff_aug_total": 65,
+  "racdiff_aug_positive": 29,
+  "racdiff_aug_negative": 36,
+  "classical_aug_total": 65,
+  "classical_aug_positive": 29,
+  "classical_aug_negative": 36,
+  "class_composition_exact_match": true,
+  "seed": 4173
+}
