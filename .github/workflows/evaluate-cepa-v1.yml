@@ -1,0 +1,163 @@
+name: Evaluate frozen CEPA-Net v1
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/evaluate_cepa_v1_fold.py'
+      - 'reports/cepa_v1_protocol_freeze.md'
+      - '.github/workflows/evaluate-cepa-v1.yml'
+
+permissions:
+  contents: write
+
+env:
+  PYTHONUNBUFFERED: '1'
+
+jobs:
+  fold:
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        held: [TS0330A, TS0330B, TS0330C, TS0330D, TS0330E, TS0330F, TS0330G, TS0330H]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pandas requests remotezip openpyxl scikit-learn
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Syntax check
+        run: python -m py_compile scripts/evaluate_cepa_v1_fold.py
+      - name: Run frozen CEPA-Net v1 fold
+        run: |
+          python scripts/evaluate_cepa_v1_fold.py \
+            --heldout ${{ matrix.held }} \
+            --out out/${{ matrix.held }} \
+            --seeds 2026 2027 2028
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cepa-v1-${{ matrix.held }}
+          path: out/${{ matrix.held }}/
+          retention-days: 3
+
+  aggregate:
+    needs: fold
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install pandas numpy
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cepa-v1-*
+          path: collected
+      - name: Aggregate CEPA-Net v1 results
+        run: |
+          rm -rf reports/cepa_v1_benchmark
+          mkdir -p reports/cepa_v1_benchmark/fold_audits
+          python - <<'PY'
+          from pathlib import Path
+          import itertools
+          import numpy as np
+          import pandas as pd
+
+          root=Path('collected'); out=Path('reports/cepa_v1_benchmark')
+          fs=sorted(root.glob('*/metrics.csv'))
+          if len(fs)!=8: raise RuntimeError(f'expected 8 folds, got {len(fs)}')
+          m=pd.concat([pd.read_csv(p) for p in fs],ignore_index=True)
+          m.to_csv(out/'all_seed_metrics.csv',index=False)
+          pf=sorted(root.glob('*/predictions.csv'))
+          if pf: pd.concat([pd.read_csv(p) for p in pf],ignore_index=True).to_csv(out/'all_predictions.csv',index=False)
+          for p in root.glob('*/audit.json'):
+              (out/'fold_audits'/f'{p.parent.name}.json').write_text(p.read_text(encoding='utf-8'),encoding='utf-8')
+
+          held=m.groupby('heldout').agg(
+              seeds=('seed','size'),mae_s=('mae_s','mean'),mae_sd=('mae_s','std'),rmse_s=('rmse_s','mean'),
+              medae_s=('medae_s','mean'),r2=('r2','mean'),bias_s=('bias_s','mean'),
+              dynamic_gate=('dynamic_gate_mean','mean'),progress_knn5_mae_s=('progress_knn5_mae_s','mean'),
+              progress_nn_tau_gap_s=('progress_nn_tau_gap_s','mean'),progress_nn_cosine=('progress_nn_cosine','mean'),
+              params=('params','mean'),epochs=('epochs','mean')
+          ).reset_index()
+          held.to_csv(out/'heldout_metrics.csv',index=False)
+
+          # Frozen LATH-Net v1 held-out reference from the existing real-only architecture benchmark.
+          ref=pd.read_csv('reports/method_paper_benchmark_v1/heldout_metrics.csv')
+          lath=ref[ref.model.eq('lath_net')][['heldout','mae_s']].rename(columns={'mae_s':'lath_v1_mae_s'})
+          attn=ref[ref.model.eq('attention_gru')][['heldout','mae_s']].rename(columns={'mae_s':'attention_gru_mae_s'})
+          cmp=held.merge(lath,on='heldout',how='left').merge(attn,on='heldout',how='left')
+          cmp['cepa_minus_lath_s']=cmp.mae_s-cmp.lath_v1_mae_s
+          cmp['cepa_minus_attention_gru_s']=cmp.mae_s-cmp.attention_gru_mae_s
+          cmp.to_csv(out/'paired_reference_comparison.csv',index=False)
+
+          rng=np.random.default_rng(20260912)
+          rows=[]
+          for name,col in [('lath_v1','lath_v1_mae_s'),('attention_gru','attention_gru_mae_s')]:
+              d=(cmp[col]-cmp.mae_s).to_numpy(float) # positive = CEPA lower MAE
+              boots=np.array([rng.choice(d,size=len(d),replace=True).mean() for _ in range(20000)])
+              vals=np.array([np.mean(d*np.asarray(s)) for s in itertools.product((-1.,1.),repeat=len(d))])
+              obs=abs(d.mean())
+              rows.append({'reference':name,'cepa_advantage_s':d.mean(),'ci_low_s':np.percentile(boots,2.5),
+                           'ci_high_s':np.percentile(boots,97.5),'cepa_better_experiments':int((d>0).sum()),
+                           'n_experiments':len(d),'exact_signflip_p':float(np.mean(np.abs(vals)>=obs-1e-12))})
+          stats=pd.DataFrame(rows); stats.to_csv(out/'paired_stats.csv',index=False)
+
+          horizons=[]
+          for h in (60,120,180,300,450):
+              cols=[f'auroc_{h}',f'auprc_{h}',f'brier_{h}']
+              t=m.groupby('heldout')[cols].mean(numeric_only=True)
+              horizons.append({'horizon_s':h,'auroc_macro':t[f'auroc_{h}'].mean(),
+                               'auprc_macro':t[f'auprc_{h}'].mean(),'brier_macro':t[f'brier_{h}'].mean()})
+          hdf=pd.DataFrame(horizons); hdf.to_csv(out/'horizon_metrics.csv',index=False)
+
+          mean_mae=held.mae_s.mean(); worst=held.mae_s.max(); wins=int((cmp.cepa_minus_lath_s<0).sum())
+          gate=(mean_mae<37.4) and (worst<70.1) and (wins>=5)
+          lines=['# CEPA-Net v1 frozen benchmark','',
+                 'Task/splits/loss were frozen in `reports/cepa_v1_protocol_freeze.md` before scoring. No augmentation is used.','',
+                 f'- Experiment-macro MAE: **{mean_mae:.2f} s**',
+                 f'- Worst held-out MAE: **{worst:.2f} s**',
+                 f'- Experiment-macro RMSE: **{held.rmse_s.mean():.2f} s**',
+                 f'- Experiment-macro MedAE: **{held.medae_s.mean():.2f} s**',
+                 f'- Experiment-macro R2: **{held.r2.mean():.4f}**',
+                 f'- Mean dynamic gate: **{held.dynamic_gate.mean():.3f}**',
+                 f'- Mean progress-embedding 5-NN MAE: **{held.progress_knn5_mae_s.mean():.2f} s**',
+                 f'- Mean nearest-embedding TTV gap: **{held.progress_nn_tau_gap_s.mean():.2f} s**','',
+                 '| heldout | MAE | RMSE | R2 | bias | dyn gate | embed 5NN MAE | NN TTV gap |',
+                 '|---|---:|---:|---:|---:|---:|---:|---:|']
+          for _,r in held.iterrows():
+              lines.append(f"| {r.heldout} | {r.mae_s:.2f} | {r.rmse_s:.2f} | {r.r2:.4f} | {r.bias_s:.2f} | {r.dynamic_gate:.3f} | {r.progress_knn5_mae_s:.2f} | {r.progress_nn_tau_gap_s:.2f} |")
+          lines += ['', '## Frozen-reference comparison','',
+                    f'- CEPA beats LATH-Net v1 on **{wins}/8** held-out experiments.',
+                    f'- LATH-Net v1 reference: mean MAE **{lath.lath_v1_mae_s.mean():.2f} s**, worst **{lath.lath_v1_mae_s.max():.2f} s**.',
+                    '- Exact-fold RF reference: mean MAE **40.42 s**, worst **62.90 s**.','',
+                    '| reference | CEPA mean MAE advantage | 95% bootstrap CI | CEPA wins | exact sign-flip p |',
+                    '|---|---:|---:|---:|---:|']
+          for _,r in stats.iterrows():
+              lines.append(f"| {r.reference} | {r.cepa_advantage_s:+.2f} s | [{r.ci_low_s:+.2f}, {r.ci_high_s:+.2f}] | {int(r.cepa_better_experiments)}/8 | {r.exact_signflip_p:.4f} |")
+          lines += ['', '## Predeclared development gate','',
+                    f'**{"PASS" if gate else "FAIL"}**: mean MAE <37.4 s, worst MAE <70.1 s, and CEPA beats LATH-Net v1 on at least 5/8 held-out experiments.','',
+                    'Statistical n is eight independent destructive experiments; overlapping windows are never treated as independent samples.']
+          (out/'README.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
+          print('\n'.join(lines))
+          PY
+      - name: Commit CEPA-Net v1 results
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git pull --rebase origin main
+          git add reports/cepa_v1_benchmark
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'research: add frozen CEPA-Net v1 benchmark results'
+          git push origin HEAD:main
