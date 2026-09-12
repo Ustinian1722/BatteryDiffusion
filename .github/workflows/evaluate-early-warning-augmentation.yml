@@ -13,13 +13,23 @@ permissions:
   contents: write
 
 jobs:
-  evaluate:
+  fold:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {tag: f25,  fraction: 0.25, heldout: A2, seed: 3122}
+          - {tag: f25,  fraction: 0.25, heldout: D1, seed: 3123}
+          - {tag: f25,  fraction: 0.25, heldout: M1, seed: 3124}
+          - {tag: f25,  fraction: 0.25, heldout: M2, seed: 3125}
+          - {tag: f100, fraction: 1.00, heldout: A2, seed: 3222}
+          - {tag: f100, fraction: 1.00, heldout: D1, seed: 3223}
+          - {tag: f100, fraction: 1.00, heldout: M1, seed: 3224}
+          - {tag: f100, fraction: 1.00, heldout: M2, seed: 3225}
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -28,44 +38,58 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install numpy pandas openpyxl scikit-learn
           python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
-      - name: Run LOEO augmentation utility study
-        shell: bash
+      - name: Prepare fold
         run: |
-          set -euo pipefail
-          rm -rf work/early_warning_loeo reports/early_warning_aug_utility
-          mkdir -p work/early_warning_loeo reports/early_warning_aug_utility/fold_audits
-          for SPEC in "f25 0.25" "f100 1.0"; do
-            set -- $SPEC
-            TAG=$1
-            FRAC=$2
-            for HELD in A2 D1 M1 M2; do
-              echo "=== ${TAG} heldout=${HELD} ==="
-              DIR="work/early_warning_loeo/${TAG}_${HELD}"
-              mkdir -p "$DIR"
-              python scripts/prepare_early_warning_fold.py \
-                --out "$DIR/fold" --heldout "$HELD" --fraction "$FRAC" \
-                --window 256 --stride 10 --horizon 900 --temp-cap 120
-              python scripts/train_diffusion_v3_anchored.py \
-                --input "$DIR/fold/train_generator.npz" \
-                --out "$DIR/syn" \
-                --steps 600 --diffusion-steps 100 --batch-size 64 --hidden 24 \
-                --candidates 160 --noise-min 0.08 --noise-max 0.25 \
-                --seed $((3100 + ${#TAG} * 10 + ${#HELD}))
-              python scripts/filter_early_warning_synthetic.py \
-                --synthetic "$DIR/syn/synthetic_windows.npz" \
-                --train-meta "$DIR/fold/train_windows.csv" \
-                --out "$DIR/syn_task.npz" --temp-cap 120
-              python scripts/evaluate_early_warning_augmentation_fold.py \
-                --fold-dir "$DIR/fold" --synthetic "$DIR/syn_task.npz" \
-                --out "reports/early_warning_aug_utility/${TAG}_${HELD}.csv" \
-                --seed 2026 --temp-cap 120
-              cp "$DIR/fold/summary.json" "reports/early_warning_aug_utility/fold_audits/${TAG}_${HELD}_fold.json"
-              cp "$DIR/syn/report.json" "reports/early_warning_aug_utility/fold_audits/${TAG}_${HELD}_generator.json"
-              cp "$DIR/syn_task.json" "reports/early_warning_aug_utility/fold_audits/${TAG}_${HELD}_task_filter.json"
-              cp "$DIR/syn/synthetic_quality.csv" "reports/early_warning_aug_utility/fold_audits/${TAG}_${HELD}_quality.csv"
-              rm -f "$DIR/syn/model.pt" "$DIR/syn/synthetic_candidates.npz"
-            done
-          done
+          mkdir -p work/fold_result/audits
+          python scripts/prepare_early_warning_fold.py \
+            --out work/fold --heldout '${{ matrix.heldout }}' --fraction '${{ matrix.fraction }}' \
+            --window 256 --stride 10 --horizon 900 --temp-cap 120
+      - name: Fit training-only RA-CDiff
+        run: |
+          python scripts/train_diffusion_v3_anchored.py \
+            --input work/fold/train_generator.npz --out work/syn \
+            --steps 600 --diffusion-steps 100 --batch-size 64 --hidden 24 \
+            --candidates 160 --noise-min 0.08 --noise-max 0.25 \
+            --seed '${{ matrix.seed }}'
+      - name: Apply task guard and evaluate held-out real experiment
+        run: |
+          python scripts/filter_early_warning_synthetic.py \
+            --synthetic work/syn/synthetic_windows.npz \
+            --train-meta work/fold/train_windows.csv \
+            --out work/syn_task.npz --temp-cap 120
+          python scripts/evaluate_early_warning_augmentation_fold.py \
+            --fold-dir work/fold --synthetic work/syn_task.npz \
+            --out 'work/fold_result/${{ matrix.tag }}_${{ matrix.heldout }}.csv' \
+            --seed 2026 --temp-cap 120
+          cp work/fold/summary.json 'work/fold_result/audits/${{ matrix.tag }}_${{ matrix.heldout }}_fold.json'
+          cp work/syn/report.json 'work/fold_result/audits/${{ matrix.tag }}_${{ matrix.heldout }}_generator.json'
+          cp work/syn_task.json 'work/fold_result/audits/${{ matrix.tag }}_${{ matrix.heldout }}_task_filter.json'
+          cp work/syn/synthetic_quality.csv 'work/fold_result/audits/${{ matrix.tag }}_${{ matrix.heldout }}_quality.csv'
+      - name: Upload fold report
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'ew-${{ matrix.tag }}-${{ matrix.heldout }}'
+          path: work/fold_result
+          retention-days: 3
+
+  aggregate:
+    needs: fold
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install pandas
+      - name: Download all fold reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ew-*
+          path: reports/early_warning_aug_utility
+          merge-multiple: true
       - name: Aggregate fold results
         run: |
           python - <<'PY'
@@ -73,6 +97,8 @@ jobs:
           import pandas as pd
           root=Path('reports/early_warning_aug_utility')
           files=sorted(p for p in root.glob('f*.csv') if p.is_file())
+          if len(files) != 8:
+              raise RuntimeError(f'Expected 8 fold metric files, got {len(files)}: {files}')
           df=pd.concat([pd.read_csv(p) for p in files],ignore_index=True)
           df.to_csv(root/'all_fold_metrics.csv',index=False)
           agg=df.groupby(['train_fraction','method','modality']).agg(
@@ -83,14 +109,14 @@ jobs:
           agg.to_csv(root/'macro_metrics.csv',index=False)
           lines=['# Fold-safe RA-CDiff augmentation utility','',
                  'Frozen task: 256 s causal context, 900 s first-vent horizon, max temperature <= 120 C, stride 10 s.','',
-                 'Every row below is based on leave-one-real-experiment-out evaluation. The scaler and RA-CDiff generator are refit using training experiments only. Synthetic samples never enter the held-out real experiment.','',
-                 'Two training-data regimes are audited: 25% of eligible real training windows (scarcity stress test) and 100%.','',
+                 'Every fold holds out one complete real experiment. The scaler and RA-CDiff generator are refit on training experiments only; synthetic samples never enter the held-out real experiment.','',
+                 'Two training-data regimes are audited: 25% of eligible real training windows (scarcity stress test) and 100%. Classical augmentation uses the same synthetic budget and is explicitly balanced across warning classes.','',
                  '| real fraction | method | modality | mean AUROC | worst AUROC | mean AUPRC | worst AUPRC | mean F1 |',
                  '|---:|---|---|---:|---:|---:|---:|---:|']
           for _,r in agg.iterrows():
               lines.append(f"| {r.train_fraction:.2f} | {r.method} | {r.modality} | {r.auroc_mean:.3f} | {r.auroc_worst:.3f} | {r.auprc_mean:.3f} | {r.auprc_worst:.3f} | {r.f1_mean:.3f} |")
           lines += ['', '## Interpretation guardrail','',
-                    'This is still an n=4 destructive-experiment proof-of-concept. The utility question is whether training-only synthetic variants improve held-out real-experiment performance, especially in the 25% real-data regime. Window counts are not experimental replicates.']
+                    'This remains an n=4 destructive-experiment proof-of-concept. The utility question is whether training-only synthetic variants improve held-out real-experiment performance, especially under 25% real-data availability. Window counts are not experimental replicates.']
           (root/'README.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
           print('\n'.join(lines))
           PY
