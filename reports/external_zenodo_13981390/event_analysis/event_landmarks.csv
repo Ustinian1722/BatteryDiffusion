@@ -1,0 +1,3 @@
+experiment_label,duration_s,rows_1hz,temperature_start_c,temperature_peak_c,temperature_peak_time_s,max_dTdt_c_per_s,rapid_temperature_time_s,pressure_baseline,pressure_peak,pressure_peak_time_s,vent_like_drop_time_s,vent_like_pressure,vent_like_dpdt,vent_like_to_temp_peak_s,pre_peak_below_120_s
+NMC111,11299.0,11300,69.89824999999999,161.45999999999998,11300.0,0.22274999999999068,10366.0,0.26399999999999985,4.462,10258.0,10261.0,4.462,-2.029,1039.0,6491
+NMC811,2922.0,2923,26.97142857142857,355.9792857142857,1692.0,3.7735714285714437,1461.0,0.003,4.6596,1348.0,1350.0,4.6596,-2.2081500000000003,342.0,866
