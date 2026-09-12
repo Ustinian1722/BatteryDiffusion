@@ -1,0 +1,32 @@
+[
+  {
+    "temperature_file": "data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Module/NMC pouch/Fresh/M1_Temperature.csv",
+    "force_file": "data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Module/NMC pouch/Fresh/M1_Force.csv",
+    "temperature_reconstructed_t_start": 0.0,
+    "temperature_reconstructed_t_end": 4413.6,
+    "aligned_t_start": 1,
+    "aligned_t_end": 4413,
+    "aligned_rows": 4413,
+    "contiguous_runs": 1,
+    "run_lengths_desc": [
+      4413
+    ],
+    "experiment_id": "M1",
+    "aging": "fresh"
+  },
+  {
+    "temperature_file": "data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Module/NMC pouch/Aged/M2_Temperature.csv",
+    "force_file": "data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Module/NMC pouch/Aged/M2_Force.csv",
+    "temperature_reconstructed_t_start": 0.0,
+    "temperature_reconstructed_t_end": 4717.6,
+    "aligned_t_start": 1,
+    "aligned_t_end": 3876,
+    "aligned_rows": 3876,
+    "contiguous_runs": 1,
+    "run_lengths_desc": [
+      3876
+    ],
+    "experiment_id": "M2",
+    "aging": "aged"
+  }
+]

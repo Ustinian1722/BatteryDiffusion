@@ -1,0 +1,23 @@
+{
+  "windows": 122,
+  "experiments": [
+    "M1",
+    "M2"
+  ],
+  "channels": [
+    "T_cell1_max",
+    "T_cell2_max",
+    "T_cell3_max",
+    "T_cell4_max",
+    "force"
+  ],
+  "stage_counts": {
+    "aged:post_peak": 17,
+    "aged:pre_rapid": 38,
+    "aged:rapid_peak": 2,
+    "fresh:post_peak": 25,
+    "fresh:pre_rapid": 38,
+    "fresh:rapid_peak": 2
+  },
+  "guardrail": "Only two independent module experiments exist; generated windows are local augmentation, not new modules."
+}
