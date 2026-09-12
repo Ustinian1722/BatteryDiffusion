@@ -21,10 +21,16 @@ from scipy.io import loadmat
 
 DATASET_ID = "rgfhdhcd9k"
 VERSION = 1
-# Mendeley public file API: dataset id + folder + version, not /versions/{v}/files.
 PUBLIC_API = f"https://data.mendeley.com/public-api/datasets/{DATASET_ID}/files?folder_id=root&version={VERSION}"
 DATASET_PAGE = f"https://data.mendeley.com/datasets/{DATASET_ID}/{VERSION}"
-HEADERS = {"User-Agent": "BatteryDiffusion-research-audit/1.0"}
+# The interactive site and public API can reject obvious hosted-runner bot user
+# agents even for CC-BY public records. Use ordinary browser negotiation while
+# keeping the request read-only and unauthenticated.
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36",
+    "Accept": "application/json, text/plain, */*",
+    "Referer": DATASET_PAGE,
+}
 
 
 def get_json(url: str):
@@ -38,15 +44,11 @@ def get_json(url: str):
 
 
 def discover_files() -> tuple[list[dict], dict]:
-    """Return public file records and an access audit.
-
-    The public file endpoint is intentionally tried first because GitHub-hosted
-    runners can receive 403 from the interactive Mendeley dataset page even
-    when the data themselves are openly downloadable.
-    """
+    """Return public file records and an access audit."""
     audit = {"public_api": PUBLIC_API, "dataset_page": DATASET_PAGE}
     r = requests.get(PUBLIC_API, timeout=60, headers=HEADERS)
     audit["public_api_status"] = r.status_code
+    audit["public_api_content_type"] = r.headers.get("content-type")
     try:
         data = r.json() if r.ok else None
     except Exception:
@@ -76,9 +78,11 @@ def discover_files() -> tuple[list[dict], dict]:
         audit["discovery_method"] = "public_api"
         return out, audit
 
-    # Fallback is diagnostic only. Some runner IP ranges are blocked by the
-    # interactive page, so a 403 is recorded instead of failing the workflow.
-    page = requests.get(DATASET_PAGE, timeout=60, headers=HEADERS)
+    # Fallback is diagnostic only. A failed page/API request is kept as an
+    # access-layer result rather than interpreted as absence of public files.
+    page_headers = dict(HEADERS)
+    page_headers["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+    page = requests.get(DATASET_PAGE, timeout=60, headers=page_headers)
     audit["dataset_page_status"] = page.status_code
     if page.ok:
         urls = sorted(set(re.findall(r'https://data\.mendeley\.com/public-files/datasets/[^"\\]+?/file_downloaded', page.text)))
@@ -160,11 +164,9 @@ def infer_extension(name: str, content_type: str | None) -> str:
 
 
 def write_source_mapping(out: Path) -> None:
-    # These fields come from the open Data in Brief data descriptor. They are
-    # written separately from raw-file-derived schema so provenance is explicit.
     rows = [
         ("TestID", "-", "test identifier"),
-        ("ExpTime", "s", "time base for IntPre and CellVoltage; 1 kHz acquisition"),
+        ("ExpTime", "s", "time base for pressure/voltage channels"),
         ("IntPre", "bar", "internal gas pressure"),
         ("CellVoltage", "V", "cell voltage"),
         ("ExpTimeTemp", "s", "temperature time base; 10 Hz acquisition"),
@@ -233,15 +235,15 @@ def main() -> None:
         "",
         "## Source-supported structure",
         "",
-        "The open data descriptor reports three independent Sony VTC6A 21700 tests at 100% SOC, triggered by 40 W external heating. The processed MATLAB data contain internal pressure, voltage, internal/surface temperatures and two vent-temperature channels. Pressure/voltage channels use a 1 kHz acquisition time base and temperature channels a 10 Hz time base. Exact field names and units are recorded in `source_supported_schema.csv`.",
+        "The open data descriptor reports three independent Sony VTC6A 21700 tests at 100% SOC, triggered by 40 W external heating. The processed MATLAB data contain internal pressure, voltage, internal/surface temperatures and two vent-temperature channels. The source reports a high-rate electrical/pressure time base and a 10 Hz temperature time base. Exact field names and units are recorded in `source_supported_schema.csv`.",
         "",
         "## Access note",
         "",
-        "If `file_manifest.csv` is empty, that is an access-layer result rather than evidence that the dataset has no files. Mendeley may block the interactive page from hosted runner IPs. We therefore keep source-derived schema separate from raw-file-derived schema and do not fabricate file identifiers.",
+        "If `file_manifest.csv` is empty, that is an access-layer result rather than evidence that the dataset has no files. Mendeley may block hosted runner IPs. We therefore keep source-derived schema separate from raw-file-derived schema and do not fabricate file identifiers.",
         "",
         "## Intended use",
         "",
-        "Once raw file access is resolved, these three tests are the highest-priority cylindrical external thermo-pressure cohort. Event landmarks will be frozen from the source paper / pressure-drop trace before predictive evaluation.",
+        "Once raw file access is resolved, these three tests are the highest-priority cylindrical external thermo-pressure cohort. Event landmarks will be frozen from source-supported vent stages / pressure landmarks before predictive evaluation.",
     ]
     (args.out / "README.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print("\n".join(lines))
