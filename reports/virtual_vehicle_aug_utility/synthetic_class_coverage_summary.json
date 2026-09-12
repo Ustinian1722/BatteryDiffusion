@@ -1,0 +1,10 @@
+{
+  "folds": 24,
+  "folds_zero_positive_synthetic": 6,
+  "folds_zero_negative_synthetic": 2,
+  "folds_both_classes": 18,
+  "median_retained_positive": 5.0,
+  "median_retained_negative": 22.0,
+  "mean_positive_fraction": 0.2659798996664726,
+  "mean_acceptance_rate": 0.25208333333333327
+}
