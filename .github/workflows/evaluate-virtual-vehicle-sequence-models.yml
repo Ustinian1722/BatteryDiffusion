@@ -1,0 +1,176 @@
+name: Evaluate Virtual Vehicle sequence-model augmentation
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/filter_virtual_vehicle_synthetic_with_anchors.py'
+      - 'scripts/evaluate_virtual_vehicle_sequence_fold.py'
+      - 'reports/research_freeze_v4.md'
+      - '.github/workflows/evaluate-virtual-vehicle-sequence-models.yml'
+
+permissions:
+  contents: write
+
+env:
+  PYTHONUNBUFFERED: '1'
+
+jobs:
+  fold:
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        include:
+          - {tag: A_BC, held: TS0330A, t1: TS0330B, t2: TS0330C, seed: 6101}
+          - {tag: A_DE, held: TS0330A, t1: TS0330D, t2: TS0330E, seed: 6102}
+          - {tag: A_FG, held: TS0330A, t1: TS0330F, t2: TS0330G, seed: 6103}
+          - {tag: B_CD, held: TS0330B, t1: TS0330C, t2: TS0330D, seed: 6111}
+          - {tag: B_EF, held: TS0330B, t1: TS0330E, t2: TS0330F, seed: 6112}
+          - {tag: B_GH, held: TS0330B, t1: TS0330G, t2: TS0330H, seed: 6113}
+          - {tag: C_DE, held: TS0330C, t1: TS0330D, t2: TS0330E, seed: 6121}
+          - {tag: C_FG, held: TS0330C, t1: TS0330F, t2: TS0330G, seed: 6122}
+          - {tag: C_HA, held: TS0330C, t1: TS0330H, t2: TS0330A, seed: 6123}
+          - {tag: D_EF, held: TS0330D, t1: TS0330E, t2: TS0330F, seed: 6131}
+          - {tag: D_GH, held: TS0330D, t1: TS0330G, t2: TS0330H, seed: 6132}
+          - {tag: D_AB, held: TS0330D, t1: TS0330A, t2: TS0330B, seed: 6133}
+          - {tag: E_FG, held: TS0330E, t1: TS0330F, t2: TS0330G, seed: 6141}
+          - {tag: E_HA, held: TS0330E, t1: TS0330H, t2: TS0330A, seed: 6142}
+          - {tag: E_BC, held: TS0330E, t1: TS0330B, t2: TS0330C, seed: 6143}
+          - {tag: F_GH, held: TS0330F, t1: TS0330G, t2: TS0330H, seed: 6151}
+          - {tag: F_AB, held: TS0330F, t1: TS0330A, t2: TS0330B, seed: 6152}
+          - {tag: F_CD, held: TS0330F, t1: TS0330C, t2: TS0330D, seed: 6153}
+          - {tag: G_HA, held: TS0330G, t1: TS0330H, t2: TS0330A, seed: 6161}
+          - {tag: G_BC, held: TS0330G, t1: TS0330B, t2: TS0330C, seed: 6162}
+          - {tag: G_DE, held: TS0330G, t1: TS0330D, t2: TS0330E, seed: 6163}
+          - {tag: H_AB, held: TS0330H, t1: TS0330A, t2: TS0330B, seed: 6171}
+          - {tag: H_CD, held: TS0330H, t1: TS0330C, t2: TS0330D, seed: 6172}
+          - {tag: H_EF, held: TS0330H, t1: TS0330E, t2: TS0330F, seed: 6173}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pandas requests remotezip openpyxl scikit-learn
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Prepare frozen scarcity fold
+        run: |
+          mkdir -p work/vv_seq/${{ matrix.tag }}/fold out
+          python scripts/prepare_virtual_vehicle_aug_fold.py \
+            --heldout ${{ matrix.held }} --train ${{ matrix.t1 }} ${{ matrix.t2 }} \
+            --out work/vv_seq/${{ matrix.tag }}/fold
+      - name: Fit training-only RA-CDiff
+        run: |
+          python scripts/train_diffusion_v3_anchored.py \
+            --input work/vv_seq/${{ matrix.tag }}/fold/train_generator.npz \
+            --out work/vv_seq/${{ matrix.tag }}/syn \
+            --steps 600 --diffusion-steps 100 --batch-size 64 --hidden 24 \
+            --candidates 160 --noise-min 0.08 --noise-max 0.25 \
+            --seed ${{ matrix.seed }}
+      - name: Preserve anchors and evaluate fixed CNN/GRU
+        run: |
+          python scripts/filter_virtual_vehicle_synthetic_with_anchors.py \
+            --synthetic work/vv_seq/${{ matrix.tag }}/syn/synthetic_windows.npz \
+            --train-real work/vv_seq/${{ matrix.tag }}/fold/train_real.npz \
+            --out work/vv_seq/${{ matrix.tag }}/syn_task.npz \
+            --seed ${{ matrix.seed }} --temp-cap 150
+          python scripts/evaluate_virtual_vehicle_sequence_fold.py \
+            --fold-dir work/vv_seq/${{ matrix.tag }}/fold \
+            --synthetic work/vv_seq/${{ matrix.tag }}/syn_task.npz \
+            --out out/${{ matrix.tag }}.csv --seed ${{ matrix.seed }}
+          cp work/vv_seq/${{ matrix.tag }}/fold/summary.json out/${{ matrix.tag }}_fold.json
+          cp work/vv_seq/${{ matrix.tag }}/syn/report.json out/${{ matrix.tag }}_generator.json
+          cp work/vv_seq/${{ matrix.tag }}/syn_task.json out/${{ matrix.tag }}_filter.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vv-seq-${{ matrix.tag }}
+          path: out/
+          retention-days: 2
+
+  aggregate:
+    needs: fold
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install pandas numpy
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: vv-seq-*
+          path: collected
+          merge-multiple: true
+      - name: Aggregate by independent held-out experiment
+        run: |
+          rm -rf reports/virtual_vehicle_sequence_aug_utility
+          mkdir -p reports/virtual_vehicle_sequence_aug_utility/fold_audits
+          cp collected/*_fold.json collected/*_generator.json collected/*_filter.json reports/virtual_vehicle_sequence_aug_utility/fold_audits/
+          python - <<'PY'
+          from pathlib import Path
+          import itertools
+          import numpy as np
+          import pandas as pd
+
+          src=Path('collected'); out=Path('reports/virtual_vehicle_sequence_aug_utility')
+          files=sorted(p for p in src.glob('*.csv') if not p.name.endswith('_predictions.csv'))
+          df=pd.concat([pd.read_csv(p) for p in files],ignore_index=True)
+          df.to_csv(out/'all_pair_metrics.csv',index=False)
+          held=df.groupby(['heldout','method','architecture']).agg(
+              pair_count=('train_experiments','size'),auroc=('auroc','mean'),auprc=('auprc','mean'),
+              f1=('f1','mean'),balanced_accuracy=('balanced_accuracy','mean')).reset_index()
+          held.to_csv(out/'heldout_macro_over_pairs.csv',index=False)
+          macro=held.groupby(['method','architecture']).agg(
+              auroc_mean=('auroc','mean'),auroc_worst=('auroc','min'),auprc_mean=('auprc','mean'),auprc_worst=('auprc','min'),
+              f1_mean=('f1','mean'),balanced_acc_mean=('balanced_accuracy','mean')).reset_index()
+          macro.to_csv(out/'macro_metrics.csv',index=False)
+
+          rows=[]
+          for arch in sorted(held.architecture.unique()):
+              h=held[held.architecture==arch].pivot(index='heldout',columns='method',values=['auroc','auprc','f1'])
+              for contrast,a,b in [('racdiff-real_only','racdiff','real_only'),('classical-real_only','classical_anchor_matched','real_only'),('racdiff-classical','racdiff','classical_anchor_matched')]:
+                  for met in ('auroc','auprc'):
+                      d=(h[(met,a)]-h[(met,b)]).to_numpy(float)
+                      rng=np.random.default_rng(20260912)
+                      boots=np.array([rng.choice(d,size=len(d),replace=True).mean() for _ in range(20000)])
+                      # exact sign-flip randomization test around zero mean
+                      vals=[]
+                      for signs in itertools.product((-1.0,1.0),repeat=len(d)):
+                          vals.append(np.mean(d*np.asarray(signs)))
+                      vals=np.asarray(vals); obs=abs(d.mean()); p=(np.sum(np.abs(vals)>=obs-1e-12))/len(vals)
+                      rows.append({'architecture':arch,'contrast':contrast,'metric':met,'mean_delta':d.mean(),
+                                   'ci_low':np.percentile(boots,2.5),'ci_high':np.percentile(boots,97.5),
+                                   'improved_experiments':int((d>0).sum()),'n_experiments':len(d),'exact_signflip_p':p})
+          stats=pd.DataFrame(rows); stats.to_csv(out/'paired_stats.csv',index=False)
+
+          lines=['# Domain-standard sequence-model validation of RA-CDiff','',
+                 'Frozen task and 24 k=2 scarcity folds are unchanged: 120 s context, 300 s to first package `vent_gas`, max input temperature <=150 C. Training normalization is fit on real training windows only. Classical augmentation uses the exact retained real anchors and labels used by RA-CDiff. CNN/GRU architecture, optimizer and 100-epoch schedule were frozen before scores were inspected.','',
+                 '| method | architecture | mean AUROC | worst AUROC | mean AUPRC | worst AUPRC | mean F1 |','|---|---|---:|---:|---:|---:|---:|']
+          for _,r in macro.sort_values(['architecture','method']).iterrows():
+              lines.append(f"| {r.method} | {r.architecture} | {r.auroc_mean:.3f} | {r.auroc_worst:.3f} | {r.auprc_mean:.3f} | {r.auprc_worst:.3f} | {r.f1_mean:.3f} |")
+          lines += ['', '## Paired experiment-level contrasts','',
+                    '| architecture | contrast | metric | mean delta | 95% bootstrap CI | improved | exact sign-flip p |','|---|---|---|---:|---:|---:|---:|']
+          for _,r in stats.iterrows():
+              lines.append(f"| {r.architecture} | {r.contrast} | {r.metric} | {r.mean_delta:+.3f} | [{r.ci_low:+.3f}, {r.ci_high:+.3f}] | {int(r.improved_experiments)}/{int(r.n_experiments)} | {r.exact_signflip_p:.4f} |")
+          lines += ['', '## Guardrail','',
+                    'The statistical unit is the held-out real experiment (n=8). These standard sequence learners are an architecture-robustness check, not a new model-search stage. Synthetic windows never increase experimental n.']
+          (out/'README.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
+          print('\n'.join(lines))
+          PY
+      - name: Commit sequence-model validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/virtual_vehicle_sequence_aug_utility
+          git commit -m 'research: validate RA-CDiff with frozen CNN and GRU warning models'
+          git pull --rebase origin main
+          git push origin HEAD:main
