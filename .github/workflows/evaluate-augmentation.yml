@@ -1,0 +1,59 @@
+name: Evaluate diffusion augmentation quality
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/evaluate_augmentation_quality.py'
+      - '.github/workflows/evaluate-augmentation.yml'
+      - 'data/synthetic/pilot_cell_2170/**'
+      - 'data/processed/augmentation_v1/cell_2170_temp_pressure.npz'
+
+concurrency:
+  group: evaluate-augmentation-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  quality-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: python -m pip install numpy pandas
+
+      - name: Evaluate accepted synthetic windows
+        run: |
+          python scripts/evaluate_augmentation_quality.py \
+            --real data/processed/augmentation_v1/cell_2170_temp_pressure.npz \
+            --synthetic data/synthetic/pilot_cell_2170/synthetic_windows.npz \
+            --quality-csv data/synthetic/pilot_cell_2170/synthetic_quality.csv \
+            --pilot-json data/synthetic/pilot_cell_2170/pilot_report.json \
+            --out reports/augmentation_quality
+          cat reports/augmentation_quality/augmentation_quality.md
+
+      - name: Commit audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/augmentation_quality
+          if git diff --cached --quiet; then
+            echo 'No quality-audit changes to commit.'
+            exit 0
+          fi
+          git commit -m 'analysis: refresh synthetic augmentation quality audit'
+          git pull --rebase origin main
+          git push origin HEAD:main
