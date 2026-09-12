@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Audit the public Warwick/Mendeley 21700 TR dataset without redistributing raw files.
 
-Dataset: 10.17632/rgfhdhcd9k.1 (same dataset later cited as .2 in the
-Data in Brief article). The script discovers public file metadata, downloads
-files only into a temporary directory, inspects MAT/CSV/XLSX structure, and
-commits schema/statistical summaries only.
+Dataset: 10.17632/rgfhdhcd9k.1 (the Data in Brief article cites the same
+record family as 10.17632/rgfhdhcd9k.2). Public files are discovered through
+Mendeley Data's unauthenticated public file endpoint, downloaded only to a
+temporary runner directory, and reduced to schema/statistical summaries.
 """
 from __future__ import annotations
 
@@ -13,7 +13,6 @@ import json
 import re
 import tempfile
 from pathlib import Path
-from urllib.parse import urljoin
 
 import numpy as np
 import pandas as pd
@@ -22,12 +21,14 @@ from scipy.io import loadmat
 
 DATASET_ID = "rgfhdhcd9k"
 VERSION = 1
-PUBLIC_API = f"https://data.mendeley.com/public-api/datasets/{DATASET_ID}/versions/{VERSION}/files"
+# Mendeley public file API: dataset id + folder + version, not /versions/{v}/files.
+PUBLIC_API = f"https://data.mendeley.com/public-api/datasets/{DATASET_ID}/files?folder_id=root&version={VERSION}"
 DATASET_PAGE = f"https://data.mendeley.com/datasets/{DATASET_ID}/{VERSION}"
+HEADERS = {"User-Agent": "BatteryDiffusion-research-audit/1.0"}
 
 
 def get_json(url: str):
-    r = requests.get(url, timeout=60, headers={"User-Agent": "BatteryDiffusion-research-audit/1.0"})
+    r = requests.get(url, timeout=60, headers=HEADERS)
     if r.ok:
         try:
             return r.json()
@@ -36,8 +37,22 @@ def get_json(url: str):
     return None
 
 
-def discover_files() -> list[dict]:
-    data = get_json(PUBLIC_API)
+def discover_files() -> tuple[list[dict], dict]:
+    """Return public file records and an access audit.
+
+    The public file endpoint is intentionally tried first because GitHub-hosted
+    runners can receive 403 from the interactive Mendeley dataset page even
+    when the data themselves are openly downloadable.
+    """
+    audit = {"public_api": PUBLIC_API, "dataset_page": DATASET_PAGE}
+    r = requests.get(PUBLIC_API, timeout=60, headers=HEADERS)
+    audit["public_api_status"] = r.status_code
+    try:
+        data = r.json() if r.ok else None
+    except Exception:
+        data = None
+    audit["public_api_payload_type"] = type(data).__name__ if data is not None else None
+
     out: list[dict] = []
     if isinstance(data, list):
         rows = data
@@ -45,26 +60,36 @@ def discover_files() -> list[dict]:
         rows = data.get("files") or data.get("results") or data.get("data") or []
     else:
         rows = []
+
     for row in rows:
         if not isinstance(row, dict):
             continue
         name = row.get("filename") or row.get("file_name") or row.get("name") or "unknown"
-        url = row.get("download_url") or row.get("content_details", {}).get("download_url") or row.get("url")
+        details = row.get("content_details") or {}
+        url = row.get("download_url") or details.get("download_url") or row.get("url")
         fid = row.get("id") or row.get("file_id")
         if not url and fid:
             url = f"https://data.mendeley.com/public-files/datasets/{DATASET_ID}/files/{fid}/file_downloaded"
         if url:
             out.append({"name": str(name), "url": str(url), "id": str(fid or ""), "size": row.get("size")})
     if out:
-        return out
+        audit["discovery_method"] = "public_api"
+        return out, audit
 
-    # Fallback: public page source sometimes embeds public-files URLs.
-    r = requests.get(DATASET_PAGE, timeout=60, headers={"User-Agent": "BatteryDiffusion-research-audit/1.0"})
-    r.raise_for_status()
-    urls = sorted(set(re.findall(r'https://data\.mendeley\.com/public-files/datasets/[^"\\]+?/file_downloaded', r.text)))
-    for i, url in enumerate(urls):
-        out.append({"name": f"discovered_file_{i+1}", "url": url.replace("\\u002F", "/"), "id": "", "size": None})
-    return out
+    # Fallback is diagnostic only. Some runner IP ranges are blocked by the
+    # interactive page, so a 403 is recorded instead of failing the workflow.
+    page = requests.get(DATASET_PAGE, timeout=60, headers=HEADERS)
+    audit["dataset_page_status"] = page.status_code
+    if page.ok:
+        urls = sorted(set(re.findall(r'https://data\.mendeley\.com/public-files/datasets/[^"\\]+?/file_downloaded', page.text)))
+        for i, url in enumerate(urls):
+            out.append({"name": f"discovered_file_{i+1}", "url": url.replace("\\u002F", "/"), "id": "", "size": None})
+        if out:
+            audit["discovery_method"] = "page_embedded_url"
+            return out, audit
+
+    audit["discovery_method"] = "blocked_or_no_files"
+    return [], audit
 
 
 def numeric_summary(label: str, key: str, arr: np.ndarray) -> dict | None:
@@ -134,28 +159,47 @@ def infer_extension(name: str, content_type: str | None) -> str:
     return ".bin"
 
 
+def write_source_mapping(out: Path) -> None:
+    # These fields come from the open Data in Brief data descriptor. They are
+    # written separately from raw-file-derived schema so provenance is explicit.
+    rows = [
+        ("TestID", "-", "test identifier"),
+        ("ExpTime", "s", "time base for IntPre and CellVoltage; 1 kHz acquisition"),
+        ("IntPre", "bar", "internal gas pressure"),
+        ("CellVoltage", "V", "cell voltage"),
+        ("ExpTimeTemp", "s", "temperature time base; 10 Hz acquisition"),
+        ("MidIntTemp", "degC", "internal midpoint temperature"),
+        ("MidSurfTemp", "degC", "midpoint surface temperature"),
+        ("NegSurfTemp", "degC", "surface temperature 10 mm from negative terminal"),
+        ("PosSurfTemp", "degC", "surface temperature 10 mm from positive terminal"),
+        ("VentPos5mmAway", "degC", "vent temperature 5 mm from positive vent cap"),
+        ("VentPos10mmAway", "degC", "vent temperature 10 mm from positive vent cap"),
+    ]
+    pd.DataFrame(rows, columns=["field", "unit", "source_description"]).to_csv(out / "source_supported_schema.csv", index=False)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", type=Path, default=Path("reports/external_warwick_21700"))
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
+    write_source_mapping(args.out)
 
-    files = discover_files()
-    if not files:
-        raise RuntimeError("No public files discovered from Mendeley dataset")
+    files, access = discover_files()
+    (args.out / "access_audit.json").write_text(json.dumps(access, indent=2), encoding="utf-8")
 
     manifest = []
     schema_rows: list[dict] = []
     with tempfile.TemporaryDirectory() as td:
         td = Path(td)
         for i, meta in enumerate(files):
-            r = requests.get(meta["url"], timeout=180, headers={"User-Agent": "BatteryDiffusion-research-audit/1.0"})
+            r = requests.get(meta["url"], timeout=180, headers=HEADERS)
             r.raise_for_status()
             name = meta["name"]
             ext = infer_extension(name, r.headers.get("content-type"))
             if Path(name).suffix == "":
                 name = f"file_{i+1}{ext}"
-            local = td / name
+            local = td / Path(name).name
             local.write_bytes(r.content)
             manifest.append({
                 "file_name": name,
@@ -165,10 +209,9 @@ def main() -> None:
             })
             schema_rows.extend(inspect_file(local, name))
 
-    pd.DataFrame(manifest).to_csv(args.out / "file_manifest.csv", index=False)
-    schema = pd.DataFrame(schema_rows)
+    pd.DataFrame(manifest, columns=["file_name", "bytes", "content_type", "source_file_id"]).to_csv(args.out / "file_manifest.csv", index=False)
+    schema = pd.DataFrame(schema_rows, columns=["file", "key", "shape", "dtype", "size", "finite", "min", "max", "mean", "std"])
     schema.to_csv(args.out / "numeric_schema.csv", index=False)
-
     if len(schema):
         key_lower = schema["key"].astype(str).str.lower()
         candidate = schema[key_lower.str.contains("press|temp|volt|time|vent|gas", regex=True)].copy()
@@ -176,27 +219,35 @@ def main() -> None:
         candidate = schema.copy()
     candidate.to_csv(args.out / "candidate_signal_arrays.csv", index=False)
 
+    status = "raw-file audit completed" if manifest else "raw-file discovery blocked/unavailable on CI; source-supported mapping only"
     lines = [
         "# Warwick/Mendeley 21700 external dataset audit",
         "",
-        "Dataset DOI: **10.17632/rgfhdhcd9k.1** (the 2025 Data in Brief article cites the same dataset family and later version).",
+        "Dataset record: **rgfhdhcd9k**, public version 1; the 2025 Data in Brief descriptor cites DOI **10.17632/rgfhdhcd9k.2** while linking to the version-1 public page.",
         "",
-        f"- Public files discovered: **{len(manifest)}**",
-        f"- Numeric arrays/columns inspected: **{len(schema)}**",
-        f"- Candidate thermo-pressure/time/voltage arrays: **{len(candidate)}**",
-        "- Raw external files were downloaded only to the temporary CI runner and are not redistributed in this repository.",
+        f"- Status: **{status}**",
+        f"- Public files discovered/downloaded: **{len(manifest)}**",
+        f"- Numeric arrays/columns inspected directly: **{len(schema)}**",
+        f"- Candidate thermo-pressure/time/voltage arrays directly inspected: **{len(candidate)}**",
+        "- Raw external files are never committed by this audit.",
+        "",
+        "## Source-supported structure",
+        "",
+        "The open data descriptor reports three independent Sony VTC6A 21700 tests at 100% SOC, triggered by 40 W external heating. The processed MATLAB data contain internal pressure, voltage, internal/surface temperatures and two vent-temperature channels. Pressure/voltage channels use a 1 kHz acquisition time base and temperature channels a 10 Hz time base. Exact field names and units are recorded in `source_supported_schema.csv`.",
+        "",
+        "## Access note",
+        "",
+        "If `file_manifest.csv` is empty, that is an access-layer result rather than evidence that the dataset has no files. Mendeley may block the interactive page from hosted runner IPs. We therefore keep source-derived schema separate from raw-file-derived schema and do not fabricate file identifiers.",
         "",
         "## Intended use",
         "",
-        "This dataset contains three independent Sony VTC6A 21700 thermal-runaway tests with internal gas pressure and multiple temperature measurements. It is being evaluated as the highest-priority external cylindrical-cell dataset for event-aligned thermo-pressure validation.",
-        "",
-        "The next step is to map each file to an experiment, identify the exact time/pressure/temperature channels and freeze source-supported soft-vent/first-vent landmarks before any predictive evaluation.",
+        "Once raw file access is resolved, these three tests are the highest-priority cylindrical external thermo-pressure cohort. Event landmarks will be frozen from the source paper / pressure-drop trace before predictive evaluation.",
     ]
     (args.out / "README.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print("\n".join(lines))
-    print("\nManifest:\n", pd.DataFrame(manifest).to_string(index=False))
-    if len(candidate):
-        print("\nCandidate arrays:\n", candidate.to_string(index=False))
+    print("\nAccess audit:\n", json.dumps(access, indent=2))
+    if manifest:
+        print("\nManifest:\n", pd.DataFrame(manifest).to_string(index=False))
 
 
 if __name__ == "__main__":
