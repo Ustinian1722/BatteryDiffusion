@@ -1,0 +1,26 @@
+[
+  {
+    "experiment_label": "NMC111",
+    "bytes": 703131,
+    "url": "https://zenodo.org/records/13981390/files/NMC111.mat?download=1",
+    "mat_format": "scipy_loadmat",
+    "top_level_keys": [
+      "T_average_nmc111",
+      "Time_T_nmc111_hour",
+      "Time_p_nmc111_hour",
+      "pressure_nmc111"
+    ]
+  },
+  {
+    "experiment_label": "NMC811",
+    "bytes": 1055535,
+    "url": "https://zenodo.org/records/13981390/files/NMC811.mat?download=1",
+    "mat_format": "scipy_loadmat",
+    "top_level_keys": [
+      "T_average_nmc811",
+      "Time_nmc811_100Hz",
+      "V_nmc811",
+      "pressure_nmc811"
+    ]
+  }
+]
