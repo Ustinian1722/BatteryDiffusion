@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Prepare leakage-aware fixed-length windows for generative augmentation.
 
-V1 intentionally starts with single-cell paired experiments whose two-column
-exports contain an explicit elapsed-time axis. Module data are preserved in the
-repository but are not forced into this first pilot because the module
-thermocouple export uses a different multi-channel time representation.
+V2 adds coarse *shape-stage* labels derived from the temperature trajectory:
+0 = pre-rapid-rise, 1 = rapid-rise/peak neighborhood, 2 = post-peak.
+These are deliberately not called venting labels because venting cannot always
+be identified from temperature alone.
 """
 from __future__ import annotations
 
@@ -68,32 +68,46 @@ def find_signal_files(root: Path) -> dict[str, dict[str, Path]]:
             e = exp_id(p)
         except ValueError:
             continue
-        sig = None
         low = p.stem.lower()
-        if "temperature" in low:
-            sig = "temperature"
-        elif "pressure" in low:
-            sig = "pressure"
-        elif "force" in low:
-            sig = "force"
+        sig = "temperature" if "temperature" in low else "pressure" if "pressure" in low else "force" if "force" in low else None
         if sig:
             out.setdefault(e, {})[sig] = p
     return out
 
 
 def quantile_scale(x: np.ndarray, eps: float = 1e-6) -> tuple[np.ndarray, np.ndarray]:
-    """Scale most observed values to approximately [-1, 1].
-
-    Thermal-runaway signals are extremely heavy-tailed. Median/IQR scaling can
-    make the rare but physically important peak region numerically huge, so the
-    pilot uses the 1st/99th-percentile midpoint and half-range instead.
-    """
     flat = np.transpose(x, (1, 0, 2)).reshape(x.shape[1], -1)
     q01 = np.nanpercentile(flat, 1, axis=1)
     q99 = np.nanpercentile(flat, 99, axis=1)
     center = 0.5 * (q01 + q99)
     scale = np.maximum(0.5 * (q99 - q01), eps)
     return center.astype(np.float32), scale.astype(np.float32)
+
+
+def stage_anchors(temp: np.ndarray) -> tuple[int, int]:
+    """Return coarse rapid-rise and peak anchors for one aligned trajectory."""
+    if len(temp) < 9:
+        peak = int(np.argmax(temp))
+        return peak, peak
+    k = min(11, len(temp) // 2 * 2 + 1)
+    kernel = np.ones(k, dtype=float) / k
+    smooth = np.convolve(temp, kernel, mode="same")
+    peak = int(np.argmax(smooth))
+    if peak <= 2:
+        return peak, peak
+    grad = np.gradient(smooth)
+    # Restrict the rapid-rise anchor to pre-peak samples.
+    rapid = int(np.argmax(grad[: peak + 1]))
+    return rapid, peak
+
+
+def assign_stage(center_idx: int, rapid_idx: int, peak_idx: int, window: int) -> int:
+    margin = max(window // 4, 1)
+    if center_idx < rapid_idx - margin:
+        return 0
+    if center_idx <= peak_idx + margin:
+        return 1
+    return 2
 
 
 def main() -> None:
@@ -108,7 +122,6 @@ def main() -> None:
     args.out.mkdir(parents=True, exist_ok=True)
     excluded = {x.upper() for x in args.exclude_experiment}
     files = find_signal_files(args.root)
-
     cohort_windows: dict[str, list[np.ndarray]] = {}
     cohort_meta: dict[str, list[dict]] = {}
 
@@ -143,16 +156,21 @@ def main() -> None:
         tv = np.interp(grid, temp.time.to_numpy(), temp.value.to_numpy())
         mv = np.interp(grid, mech.time.to_numpy(), mech.value.to_numpy())
         arr = np.stack([tv, mv], axis=0).astype(np.float32)
+        rapid_idx, peak_idx = stage_anchors(tv)
 
         cohort = "cell_2170_temp_pressure" if form == "2170" else "cell_pouch_temp_mechanical"
         cohort_windows.setdefault(cohort, [])
         cohort_meta.setdefault(cohort, [])
         for start in range(0, arr.shape[1] - args.window + 1, args.stride):
             end = start + args.window
+            center_idx = start + args.window // 2
+            stage = assign_stage(center_idx, rapid_idx, peak_idx, args.window)
             cohort_windows[cohort].append(arr[:, start:end])
             cohort_meta[cohort].append({
                 "experiment_id": eid,
                 "aging": aging,
+                "stage": stage,
+                "stage_name": ("pre_rapid" if stage == 0 else "rapid_peak" if stage == 1 else "post_peak"),
                 "level": level,
                 "form_factor": form,
                 "mechanical_source_name": mech_key,
@@ -160,6 +178,8 @@ def main() -> None:
                 "t_start_s": float(grid[start]),
                 "t_end_s": float(grid[end - 1]),
                 "window_start_index": start,
+                "rapid_anchor_s": float(grid[rapid_idx]),
+                "peak_anchor_s": float(grid[peak_idx]),
             })
 
     summary = []
@@ -171,22 +191,22 @@ def main() -> None:
         center, scale = quantile_scale(x)
         x_norm = (x - center[None, :, None]) / scale[None, :, None]
         age = (meta["aging"].str.lower() == "aged").astype(np.int64).to_numpy()
+        stage = meta["stage"].astype(np.int64).to_numpy()
         np.savez_compressed(
             args.out / f"{cohort}.npz",
-            x=x_norm.astype(np.float32),
-            age=age,
+            x=x_norm.astype(np.float32), age=age, stage=stage,
             experiment_id=meta["experiment_id"].to_numpy(dtype="U16"),
-            center=center,
-            scale=scale,
+            center=center, scale=scale,
             channel_names=np.array(["temperature", "mechanical"], dtype="U32"),
         )
         meta.to_csv(args.out / f"{cohort}_windows.csv", index=False)
         (args.out / f"{cohort}_scaler.json").write_text(json.dumps({
-            "center": center.tolist(),
-            "scale": scale.tolist(),
+            "center": center.tolist(), "scale": scale.tolist(),
             "normalization": "global 1st/99th-percentile midpoint and half-range on selected training experiments",
             "excluded_experiments": sorted(excluded),
+            "stage_semantics": {"0": "pre_rapid", "1": "rapid_peak", "2": "post_peak"},
         }, indent=2), encoding="utf-8")
+        counts = meta.groupby(["aging", "stage_name"]).size().to_dict()
         summary.append({
             "cohort": cohort,
             "windows": int(len(x)),
@@ -194,6 +214,7 @@ def main() -> None:
             "experiment_ids": "+".join(sorted(meta.experiment_id.unique())),
             "fresh_windows": int((meta.aging == "fresh").sum()),
             "aged_windows": int((meta.aging == "aged").sum()),
+            "stage_counts": json.dumps({f"{k[0]}:{k[1]}": int(v) for k, v in counts.items()}),
         })
 
     pd.DataFrame(summary).to_csv(args.out / "cohort_summary.csv", index=False)
