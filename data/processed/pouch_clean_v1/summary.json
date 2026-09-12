@@ -1,0 +1,22 @@
+{
+  "windows": 215,
+  "experiments": [
+    "A2",
+    "D1"
+  ],
+  "fresh_windows": 98,
+  "aged_windows": 117,
+  "stage_counts": {
+    "aged:post_peak": 75,
+    "aged:pre_rapid": 40,
+    "aged:rapid_peak": 2,
+    "fresh:post_peak": 61,
+    "fresh:pre_rapid": 35,
+    "fresh:rapid_peak": 2
+  },
+  "channel_names": [
+    "temperature",
+    "force"
+  ],
+  "guardrail": "D1 filename says Pressure, but pouch mechanics are treated as force; suspicious tail is quarantined, not repaired."
+}

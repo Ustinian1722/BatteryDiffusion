@@ -1,0 +1,31 @@
+[
+  {
+    "raw_rows": 9244,
+    "clean_rows": 6503,
+    "cut_index": 6503,
+    "reasons": [
+      "first_missing_index=6503"
+    ],
+    "t_start": 1.0,
+    "t_end": 6503.0,
+    "experiment_id": "A2",
+    "raw_mechanical_file": "data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Cell/NMC pouch/Fresh/A2_Force.xlsx",
+    "raw_filename_label": "force",
+    "interpreted_physical_modality": "force"
+  },
+  {
+    "raw_rows": 9244,
+    "clean_rows": 7731,
+    "cut_index": 7731,
+    "reasons": [
+      "first_missing_index=9180",
+      "unit_ramp_start_index=7731"
+    ],
+    "t_start": 1.0,
+    "t_end": 7731.0,
+    "experiment_id": "D1",
+    "raw_mechanical_file": "data/raw/osf_c2hnq/Dataset_TR/Dataset_TR/Cell/NMC pouch/Aged/D1_Pressure.xlsx",
+    "raw_filename_label": "pressure",
+    "interpreted_physical_modality": "force"
+  }
+]
