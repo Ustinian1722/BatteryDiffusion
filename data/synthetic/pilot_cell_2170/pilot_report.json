@@ -1,0 +1,24 @@
+{
+  "input_file": "data/processed/augmentation_v1/cell_2170_temp_pressure.npz",
+  "device": "cpu",
+  "real_windows": 174,
+  "independent_experiment_ids": [
+    "B2",
+    "C1",
+    "C2"
+  ],
+  "training_steps": 400,
+  "candidate_synthetic_windows": 128,
+  "accepted_synthetic_windows": 0,
+  "acceptance_rate": 0.0,
+  "fresh_accepted": 0,
+  "aged_accepted": 0,
+  "quality_thresholds": {
+    "feature_robust_z_max": 8.0,
+    "nearest_real_distance_min": 0.0036515553947538137,
+    "nearest_real_distance_max": 1.542306900024414,
+    "max_abs_normalized": 8.0,
+    "real_real_nn_median": 0.024639075621962547
+  },
+  "important_caveat": "Synthetic windows are augmentation samples, not new independent TR experiments."
+}

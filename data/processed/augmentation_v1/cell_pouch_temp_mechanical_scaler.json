@@ -1,0 +1,12 @@
+{
+  "center": [
+    265.760009765625,
+    428.4222106933594
+  ],
+  "scale": [
+    225.5466766357422,
+    478.0054016113281
+  ],
+  "normalization": "global 1st/99th-percentile midpoint and half-range on selected training experiments",
+  "excluded_experiments": []
+}
