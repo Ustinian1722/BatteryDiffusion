@@ -1,0 +1,7 @@
+group,candidates,accepted,pass_feature,pass_memorization_floor,pass_ood_ceiling,pass_amplitude,fail_feature_only_or_combined,fail_memorization_floor,fail_ood_ceiling,fail_amplitude,feature_z_median,nearest_real_median
+age0_stage0,24,7,7,24,24,24,17,0,0,0,7.830093860626221,0.794583261013031
+age0_stage1,4,4,4,4,4,4,0,0,0,0,3.1850993633270264,0.5339449346065521
+age0_stage2,118,73,97,118,84,118,21,0,34,0,5.2432334423065186,0.5007505118846893
+age1_stage0,69,0,0,69,66,69,69,0,3,0,11.425268173217772,0.7687272429466248
+age1_stage1,4,4,4,4,4,4,0,0,0,0,2.1729915142059326,0.46984100341796875
+age1_stage2,37,33,33,37,37,37,4,0,0,0,3.6240196228027344,0.3796012103557586
