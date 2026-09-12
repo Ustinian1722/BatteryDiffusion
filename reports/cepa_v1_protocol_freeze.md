@@ -63,7 +63,11 @@ The embedding distance is normalized cosine distance
 
 `d_z = sqrt(max(2-2*cos(z_i,z_j), eps)) / 2`.
 
-The cross-experiment alignment loss minimizes weighted squared error between `d_z` and `d_target` for pairs from **different training experiments only**. Pairs with similar TTV receive larger weight so equal-progress states from different destructive experiments are explicitly pulled together, while distant progress states remain separated.
+The cross-experiment alignment loss minimizes weighted squared error between `d_z` and `d_target` for pairs from **different training experiments only**. The frozen pair weight is
+
+`w_ij = 1 + 2*exp(-|y_i-y_j|/0.10)`.
+
+Thus similar-progress cross-experiment pairs receive extra weight while all cross-experiment pairs contribute to the distance geometry. Only the strict upper triangle is counted, so each pair contributes once.
 
 ### 5. Prediction heads
 
