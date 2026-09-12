@@ -1,0 +1,12 @@
+field,unit,source_description
+TestID,-,test identifier
+ExpTime,s,time base for IntPre and CellVoltage; 1 kHz acquisition
+IntPre,bar,internal gas pressure
+CellVoltage,V,cell voltage
+ExpTimeTemp,s,temperature time base; 10 Hz acquisition
+MidIntTemp,degC,internal midpoint temperature
+MidSurfTemp,degC,midpoint surface temperature
+NegSurfTemp,degC,surface temperature 10 mm from negative terminal
+PosSurfTemp,degC,surface temperature 10 mm from positive terminal
+VentPos5mmAway,degC,vent temperature 5 mm from positive vent cap
+VentPos10mmAway,degC,vent temperature 10 mm from positive vent cap
