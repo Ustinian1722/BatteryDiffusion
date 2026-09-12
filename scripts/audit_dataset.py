@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Audit the extracted OSF thermal-runaway dataset.
 
-The script treats each experiment ID (A1, A2, B1, B2, C1, C2, D1, M1, M2)
-as the independent experimental unit. It reports file-level signal statistics and
-experiment-level modality availability without treating time samples as
-independent experiments.
+Each experiment ID is treated as the independent experimental unit. The OSF
+archive mixes headerless XLSX/two-column files with named-column CSV exports,
+so the loader explicitly detects numeric-looking headers and reloads them as
+headerless tables.
 """
 from __future__ import annotations
 
@@ -12,17 +12,42 @@ import argparse
 import json
 import re
 from pathlib import Path
+from typing import Hashable
 
 import numpy as np
 import pandas as pd
 
 
+def _looks_numeric(value: object) -> bool:
+    try:
+        float(str(value).strip())
+        return True
+    except Exception:
+        return False
+
+
 def read_table(path: Path) -> pd.DataFrame:
-    if path.suffix.lower() == ".csv":
-        return pd.read_csv(path)
-    if path.suffix.lower() in {".xlsx", ".xls"}:
-        return pd.read_excel(path)
-    raise ValueError(f"Unsupported file type: {path}")
+    suffix = path.suffix.lower()
+    if suffix == ".csv":
+        df = pd.read_csv(path)
+        if len(df.columns) and all(_looks_numeric(c) for c in df.columns):
+            df = pd.read_csv(path, header=None)
+    elif suffix in {".xlsx", ".xls"}:
+        df = pd.read_excel(path)
+        if len(df.columns) and all(_looks_numeric(c) for c in df.columns):
+            df = pd.read_excel(path, header=None)
+    else:
+        raise ValueError(f"Unsupported file type: {path}")
+
+    # Give headerless two-column exports stable semantic names.
+    if list(df.columns) == list(range(len(df.columns))):
+        if len(df.columns) == 2:
+            df.columns = ["time", "value"]
+        else:
+            df.columns = [f"col_{i}" for i in range(len(df.columns))]
+    else:
+        df.columns = [str(c) for c in df.columns]
+    return df
 
 
 def experiment_id(path: Path) -> str:
@@ -49,18 +74,25 @@ def infer_context(path: Path) -> tuple[str, str, str]:
     return level, form, aging
 
 
-def numeric_series(df: pd.DataFrame, col: str) -> pd.Series:
+def numeric_series(df: pd.DataFrame, col: Hashable) -> pd.Series:
     return pd.to_numeric(df[col], errors="coerce")
 
 
 def infer_time_column(df: pd.DataFrame) -> str | None:
     for c in df.columns:
-        if "time" in str(c).lower():
+        lc = str(c).lower()
+        if "time" in lc or lc in {"t", "seconds", "second", "sec", "s"}:
             return str(c)
-    # fallback: first mostly numeric, monotonic column
+    # The module temperature export contains an `ms` counter rather than full
+    # elapsed seconds; do not pretend it is a monotonic absolute time axis.
+    if any(str(c).lower() == "ms" for c in df.columns):
+        return None
+    # Headerless two-column files use the first column as elapsed test time.
+    if "time" in df.columns:
+        return "time"
     for c in df.columns:
         s = numeric_series(df, c).dropna()
-        if len(s) >= 3 and s.is_monotonic_increasing:
+        if len(s) >= 3 and s.is_monotonic_increasing and s.nunique() == len(s):
             return str(c)
     return None
 
@@ -97,22 +129,21 @@ def main() -> None:
                 t = numeric_series(df, time_col).dropna().to_numpy(dtype=float)
                 if len(t) >= 2:
                     dt = np.diff(t)
-                    dt = dt[np.isfinite(dt) & (dt > 0)]
+                    dt_pos = dt[np.isfinite(dt) & (dt > 0)]
                     rec["t_start"] = float(t[0])
                     rec["t_end"] = float(t[-1])
                     rec["duration_s"] = float(t[-1] - t[0])
-                    if len(dt):
-                        rec["median_dt_s"] = float(np.median(dt))
-                        rec["sampling_hz"] = float(1.0 / np.median(dt))
-                        rec["dt_cv"] = float(np.std(dt) / np.mean(dt)) if np.mean(dt) else np.nan
-            value_cols = [str(c) for c in df.columns if str(c) != time_col]
-            # Store simple ranges for all numeric signal columns.
+                    if len(dt_pos):
+                        rec["median_dt_s"] = float(np.median(dt_pos))
+                        rec["sampling_hz"] = float(1.0 / np.median(dt_pos))
+                        rec["dt_cv"] = float(np.std(dt_pos) / np.mean(dt_pos)) if np.mean(dt_pos) else np.nan
+            value_cols = [c for c in df.columns if str(c) != time_col]
             ranges = {}
             for c in value_cols:
                 s = numeric_series(df, c)
                 finite = s[np.isfinite(s)]
                 if len(finite):
-                    ranges[c] = {
+                    ranges[str(c)] = {
                         "min": float(finite.min()),
                         "max": float(finite.max()),
                         "mean": float(finite.mean()),
@@ -120,7 +151,7 @@ def main() -> None:
                     }
             rec["numeric_ranges"] = json.dumps(ranges, ensure_ascii=False)
             rec["error"] = ""
-        except Exception as exc:  # keep audit running across malformed files
+        except Exception as exc:
             rec["error"] = repr(exc)
         file_rows.append(rec)
 
@@ -143,7 +174,6 @@ def main() -> None:
                 "has_force": int("force" in signals),
                 "multimodal": int("temperature" in signals and ("pressure" in signals or "force" in signals)),
             }
-            # Sampling/duration summaries across available signals.
             for col in ("rows", "duration_s", "median_dt_s", "sampling_hz"):
                 if col in g.columns:
                     vals = pd.to_numeric(g[col], errors="coerce").dropna()
@@ -159,22 +189,23 @@ def main() -> None:
     summary = [
         "# Detailed dataset audit",
         "",
-        f"- Independent experiment IDs: **{n_exp}**",
+        f"- Independent experiment IDs present in the archive: **{n_exp}**",
         f"- Multimodal experiments (temperature + mechanical): **{n_multi}**",
         f"- Signal files audited: **{len(files_df)}**",
         "",
+        "> Note: the published paper reports 8 TR experiments, while this downloaded archive exposes 9 experiment IDs. The repository therefore preserves the archive as-is and records IDs explicitly rather than silently reconciling them.",
+        "",
         "## Independent-unit warning",
         "",
-        "Time samples or sliding windows from the same experiment are not independent experimental units. ",
-        "Any downstream evaluation must split by `experiment_id` before windowing or generative-model fitting.",
+        "Time samples or sliding windows from the same experiment are not independent experimental units.",
+        "Any downstream evaluation must split by `experiment_id` before windowing or fitting a generator/predictor.",
         "",
         "## Files",
         "",
-        "- `experiment_inventory.csv`: one row per independent experiment.",
+        "- `experiment_inventory.csv`: one row per experiment ID.",
         "- `signal_file_audit.csv`: one row per recorded signal file.",
     ]
     (args.out / "detailed_dataset_audit.md").write_text("\n".join(summary) + "\n", encoding="utf-8")
-
     print(exp_df.to_string(index=False))
 
 
