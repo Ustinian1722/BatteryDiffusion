@@ -8,6 +8,10 @@ on:
       - 'scripts/train_diffusion_pilot.py'
       - '.github/workflows/augmentation-pilot.yml'
 
+concurrency:
+  group: augmentation-pilot-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
@@ -43,17 +47,17 @@ jobs:
             --stride 64
           cat data/processed/augmentation_v1/cohort_summary.csv
 
-      - name: Train 2170 conditional diffusion pilot and generate candidates
+      - name: Train age-stage conditional diffusion and generate candidates
         run: |
           rm -rf data/synthetic/pilot_cell_2170
           python scripts/train_diffusion_pilot.py \
             --input data/processed/augmentation_v1/cell_2170_temp_pressure.npz \
             --out data/synthetic/pilot_cell_2170 \
-            --steps 400 \
-            --diffusion-steps 50 \
+            --steps 800 \
+            --diffusion-steps 60 \
             --batch-size 64 \
-            --hidden 24 \
-            --candidates 128 \
+            --hidden 32 \
+            --candidates 256 \
             --seed 2026
           cat data/synthetic/pilot_cell_2170/pilot_report.md
 
@@ -71,5 +75,7 @@ jobs:
             echo 'No augmentation changes to commit.'
             exit 0
           fi
-          git commit -m 'data: add conditional diffusion augmentation pilot'
+          git commit -m 'data: refresh age-stage conditional diffusion augmentation pilot'
+          # The workflow can overlap with audit commits. Rebase before pushing.
+          git pull --rebase origin main
           git push origin HEAD:main
