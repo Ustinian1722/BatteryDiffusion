@@ -1,0 +1,3 @@
+reference,cepa_advantage_s,ci_low_s,ci_high_s,cepa_better_experiments,n_experiments,exact_signflip_p
+lath_v1,-2.3554852248940703,-8.67693993692015,3.488847612490025,4,8,0.5234375
+attention_gru,-0.27014699308398793,-13.539528248657685,10.367845737778007,5,8,0.984375
