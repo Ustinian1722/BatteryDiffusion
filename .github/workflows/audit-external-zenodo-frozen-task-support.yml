@@ -1,0 +1,41 @@
+name: Audit external Zenodo support for frozen warning tasks
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/audit_external_zenodo_virtual_vehicle_task_support.py'
+      - '.github/workflows/audit-external-zenodo-frozen-task-support.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: python -m pip install numpy pandas scipy requests
+      - name: Audit frozen-task support without fitting predictor
+        run: |
+          rm -rf reports/external_zenodo_13981390/virtual_vehicle_task_support
+          python scripts/audit_external_zenodo_virtual_vehicle_task_support.py \
+            --out reports/external_zenodo_13981390/virtual_vehicle_task_support
+      - name: Commit support audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/external_zenodo_13981390/virtual_vehicle_task_support
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'research: audit external Zenodo support under frozen warning tasks'
+          git pull --rebase origin main
+          git push origin HEAD:main
