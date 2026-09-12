@@ -1,0 +1,41 @@
+{
+  "heldout": "TS0330A",
+  "train_experiments": [
+    "TS0330F",
+    "TS0330G"
+  ],
+  "n_train_windows": 64,
+  "n_test_windows": 41,
+  "tau_train_min_s": 195.35000610351562,
+  "tau_train_max_s": 531.3300170898438,
+  "tau_test_min_s": 199.89,
+  "tau_test_max_s": 599.89,
+  "tau_tertile_edges_s": [
+    315.3500061035156,
+    421.3299865722656
+  ],
+  "tau_tertile_counts": {
+    "0": 22,
+    "1": 21,
+    "2": 21
+  },
+  "center": [
+    88.86304473876953,
+    1.664740800857544
+  ],
+  "scale": [
+    58.04745101928711,
+    0.03869563341140747
+  ],
+  "events_s": {
+    "TS0330F": 685.35,
+    "TS0330G": 673.33,
+    "TS0330A": 815.89
+  },
+  "task": {
+    "window_s": 120,
+    "stride_s": 10,
+    "max_tau_s": 600,
+    "temp_cap_c": 150
+  }
+}

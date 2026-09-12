@@ -1,0 +1,71 @@
+{
+  "version": "v3_real_anchored_cosine",
+  "device": "cpu",
+  "real_windows": 74,
+  "independent_experiment_ids": [
+    "TS0330A",
+    "TS0330H"
+  ],
+  "training_steps": 600,
+  "diffusion_steps": 100,
+  "noise_t_range": [
+    8,
+    25
+  ],
+  "candidate_synthetic_windows": 180,
+  "accepted_synthetic_windows": 32,
+  "acceptance_rate": 0.17777777777777778,
+  "condition_group_counts": [
+    {
+      "age": 0,
+      "stage": 0,
+      "count": 60,
+      "sum": 0
+    },
+    {
+      "age": 0,
+      "stage": 1,
+      "count": 60,
+      "sum": 4
+    },
+    {
+      "age": 0,
+      "stage": 2,
+      "count": 60,
+      "sum": 28
+    }
+  ],
+  "quality_thresholds": {
+    "age0_stage0": {
+      "n_real_exact_condition": 25,
+      "n_real_reference": 25,
+      "feature_z_max": 5.0,
+      "nearest_real_min": 0.0035410869866609575,
+      "nearest_real_max": 0.21246521919965744,
+      "real_real_nn_median": 0.017705434933304787,
+      "real_real_nn_p95": 0.035153262317180634,
+      "max_abs_normalized": 3.5
+    },
+    "age0_stage1": {
+      "n_real_exact_condition": 24,
+      "n_real_reference": 24,
+      "feature_z_max": 5.0,
+      "nearest_real_min": 0.008361680060625076,
+      "nearest_real_max": 0.5017008036375046,
+      "real_real_nn_median": 0.04180840030312538,
+      "real_real_nn_p95": 0.049666158854961395,
+      "max_abs_normalized": 3.5
+    },
+    "age0_stage2": {
+      "n_real_exact_condition": 25,
+      "n_real_reference": 25,
+      "feature_z_max": 5.0,
+      "nearest_real_min": 0.009258385747671127,
+      "nearest_real_max": 0.5555031448602676,
+      "real_real_nn_median": 0.04629192873835564,
+      "real_real_nn_p95": 0.05661751702427864,
+      "max_abs_normalized": 3.5
+    }
+  },
+  "important_caveat": "Real-anchored synthetic windows are local augmentation variants, not new independent TR experiments."
+}

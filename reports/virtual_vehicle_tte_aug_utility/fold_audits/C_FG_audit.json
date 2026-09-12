@@ -1,0 +1,16 @@
+{
+  "heldout": "TS0330C",
+  "train_experiments": [
+    "TS0330F",
+    "TS0330G"
+  ],
+  "real_train_windows": 64,
+  "test_windows": 33,
+  "racdiff_aug": 30,
+  "classical_aug": 30,
+  "anchor_indices_exactly_shared": true,
+  "continuous_labels_exactly_shared": true,
+  "synthetic_tau_min_s": 321.3299865722656,
+  "synthetic_tau_max_s": 531.3300170898438,
+  "seed": 5122
+}

@@ -1,0 +1,16 @@
+{
+  "input_accepted_quality_gate": 57,
+  "pass_task_guard": 57,
+  "retained_budgeted": 57,
+  "real_train_windows": 71,
+  "retained_stage_counts": {
+    "0": 2,
+    "1": 48,
+    "2": 7
+  },
+  "tau_min_s": 273.3599853515625,
+  "tau_max_s": 593.3599853515625,
+  "tau_median_s": 433.3599853515625,
+  "temp_cap_c": 150.0,
+  "label_rule": "synthetic tau equals unchanged real-anchor tau; no synthetic event time is invented"
+}
