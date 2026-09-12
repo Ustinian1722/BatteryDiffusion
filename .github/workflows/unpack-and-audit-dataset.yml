@@ -1,0 +1,123 @@
+name: Unpack and audit OSF thermal-runaway dataset
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'c2hnq-osfstorage-archive.zip'
+      - '.github/workflows/unpack-and-audit-dataset.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  unpack-audit-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf data/raw/osf_c2hnq
+          mkdir -p data/raw/osf_c2hnq reports
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          archive = Path('c2hnq-osfstorage-archive.zip')
+          out = Path('data/raw/osf_c2hnq')
+          with ZipFile(archive) as zf:
+              for member in zf.infolist():
+                  name = member.filename.replace('\\', '/')
+                  if name.startswith('__MACOSX/') or '/__MACOSX/' in name:
+                      continue
+                  # Prevent path traversal.
+                  dest = (out / name).resolve()
+                  if out.resolve() not in dest.parents and dest != out.resolve():
+                      raise RuntimeError(f'Unsafe ZIP member: {name}')
+                  zf.extract(member, out)
+          PY
+
+      - name: Create dataset tree and CSV audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          find data/raw/osf_c2hnq -type f | sort > reports/raw_dataset_tree.txt
+          python - <<'PY'
+          import csv
+          import json
+          from pathlib import Path
+
+          root = Path('data/raw/osf_c2hnq')
+          rows = []
+          for p in sorted(root.rglob('*')):
+              if not p.is_file():
+                  continue
+              rec = {
+                  'path': str(p),
+                  'suffix': p.suffix.lower(),
+                  'bytes': p.stat().st_size,
+                  'rows': '',
+                  'columns': '',
+                  'error': '',
+              }
+              if p.suffix.lower() == '.csv':
+                  try:
+                      # Try common encodings used by spreadsheet exports.
+                      text = None
+                      used_encoding = None
+                      for enc in ('utf-8-sig', 'utf-8', 'gb18030', 'latin1'):
+                          try:
+                              text = p.read_text(encoding=enc)
+                              used_encoding = enc
+                              break
+                          except UnicodeDecodeError:
+                              pass
+                      if text is None:
+                          raise UnicodeError('could not decode CSV')
+                      data = list(csv.reader(text.splitlines()))
+                      rec['rows'] = max(len(data) - 1, 0)
+                      rec['columns'] = json.dumps(data[0] if data else [], ensure_ascii=False)
+                      rec['error'] = f'encoding={used_encoding}'
+                  except Exception as e:
+                      rec['error'] = repr(e)
+              rows.append(rec)
+
+          out = Path('reports/raw_dataset_audit.csv')
+          out.parent.mkdir(parents=True, exist_ok=True)
+          with out.open('w', newline='', encoding='utf-8') as f:
+              w = csv.DictWriter(f, fieldnames=['path','suffix','bytes','rows','columns','error'])
+              w.writeheader()
+              w.writerows(rows)
+
+          csv_count = sum(r['suffix'] == '.csv' for r in rows)
+          total_bytes = sum(r['bytes'] for r in rows)
+          Path('reports/raw_dataset_audit.md').write_text(
+              '# Raw dataset audit\n\n'
+              f'- Extracted files: **{len(rows)}**\n'
+              f'- CSV files: **{csv_count}**\n'
+              f'- Total extracted size: **{total_bytes:,} bytes**\n\n'
+              'Detailed file-level audit: `raw_dataset_audit.csv`.\n'
+              'Full extracted file list: `raw_dataset_tree.txt`.\n',
+              encoding='utf-8'
+          )
+          PY
+
+      - name: Commit extracted dataset and audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/raw/osf_c2hnq reports/raw_dataset_tree.txt reports/raw_dataset_audit.csv reports/raw_dataset_audit.md
+          if git diff --cached --quiet; then
+            echo 'No dataset changes to commit.'
+            exit 0
+          fi
+          git commit -m 'data: unpack and audit OSF thermal-runaway dataset'
+          git push origin HEAD:main
