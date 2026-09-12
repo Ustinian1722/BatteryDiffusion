@@ -1,0 +1,181 @@
+name: Evaluate Virtual Vehicle experiment-count learning curve
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/prepare_virtual_vehicle_learning_curve_fold.py'
+      - 'scripts/evaluate_virtual_vehicle_learning_curve_fold.py'
+      - 'reports/research_freeze_v5.md'
+      - '.github/workflows/evaluate-virtual-vehicle-learning-curve.yml'
+
+permissions:
+  contents: write
+
+env:
+  PYTHONUNBUFFERED: '1'
+
+jobs:
+  fold:
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        include:
+          - {tag: A_k2, held: TS0330A, k: 2, train: 'TS0330B TS0330C', seed: 8201}
+          - {tag: A_k4, held: TS0330A, k: 4, train: 'TS0330B TS0330C TS0330D TS0330E', seed: 8401}
+          - {tag: A_k6, held: TS0330A, k: 6, train: 'TS0330B TS0330C TS0330D TS0330E TS0330F TS0330G', seed: 8601}
+          - {tag: B_k2, held: TS0330B, k: 2, train: 'TS0330C TS0330D', seed: 8202}
+          - {tag: B_k4, held: TS0330B, k: 4, train: 'TS0330C TS0330D TS0330E TS0330F', seed: 8402}
+          - {tag: B_k6, held: TS0330B, k: 6, train: 'TS0330C TS0330D TS0330E TS0330F TS0330G TS0330H', seed: 8602}
+          - {tag: C_k2, held: TS0330C, k: 2, train: 'TS0330D TS0330E', seed: 8203}
+          - {tag: C_k4, held: TS0330C, k: 4, train: 'TS0330D TS0330E TS0330F TS0330G', seed: 8403}
+          - {tag: C_k6, held: TS0330C, k: 6, train: 'TS0330D TS0330E TS0330F TS0330G TS0330H TS0330A', seed: 8603}
+          - {tag: D_k2, held: TS0330D, k: 2, train: 'TS0330E TS0330F', seed: 8204}
+          - {tag: D_k4, held: TS0330D, k: 4, train: 'TS0330E TS0330F TS0330G TS0330H', seed: 8404}
+          - {tag: D_k6, held: TS0330D, k: 6, train: 'TS0330E TS0330F TS0330G TS0330H TS0330A TS0330B', seed: 8604}
+          - {tag: E_k2, held: TS0330E, k: 2, train: 'TS0330F TS0330G', seed: 8205}
+          - {tag: E_k4, held: TS0330E, k: 4, train: 'TS0330F TS0330G TS0330H TS0330A', seed: 8405}
+          - {tag: E_k6, held: TS0330E, k: 6, train: 'TS0330F TS0330G TS0330H TS0330A TS0330B TS0330C', seed: 8605}
+          - {tag: F_k2, held: TS0330F, k: 2, train: 'TS0330G TS0330H', seed: 8206}
+          - {tag: F_k4, held: TS0330F, k: 4, train: 'TS0330G TS0330H TS0330A TS0330B', seed: 8406}
+          - {tag: F_k6, held: TS0330F, k: 6, train: 'TS0330G TS0330H TS0330A TS0330B TS0330C TS0330D', seed: 8606}
+          - {tag: G_k2, held: TS0330G, k: 2, train: 'TS0330H TS0330A', seed: 8207}
+          - {tag: G_k4, held: TS0330G, k: 4, train: 'TS0330H TS0330A TS0330B TS0330C', seed: 8407}
+          - {tag: G_k6, held: TS0330G, k: 6, train: 'TS0330H TS0330A TS0330B TS0330C TS0330D TS0330E', seed: 8607}
+          - {tag: H_k2, held: TS0330H, k: 2, train: 'TS0330A TS0330B', seed: 8208}
+          - {tag: H_k4, held: TS0330H, k: 4, train: 'TS0330A TS0330B TS0330C TS0330D', seed: 8408}
+          - {tag: H_k6, held: TS0330H, k: 6, train: 'TS0330A TS0330B TS0330C TS0330D TS0330E TS0330F', seed: 8608}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pandas requests remotezip openpyxl scikit-learn
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Prepare frozen learning-curve fold
+        run: |
+          mkdir -p work/lc/${{ matrix.tag }}/fold out
+          python scripts/prepare_virtual_vehicle_learning_curve_fold.py \
+            --heldout ${{ matrix.held }} --train ${{ matrix.train }} \
+            --out work/lc/${{ matrix.tag }}/fold
+      - name: Fit training-only RA-CDiff
+        run: |
+          python scripts/train_diffusion_v3_anchored.py \
+            --input work/lc/${{ matrix.tag }}/fold/train_generator.npz \
+            --out work/lc/${{ matrix.tag }}/syn \
+            --steps 600 --diffusion-steps 100 --batch-size 64 --hidden 24 \
+            --candidates 160 --noise-min 0.08 --noise-max 0.25 \
+            --seed ${{ matrix.seed }}
+      - name: Exact-anchor comparison on held-out real experiment
+        run: |
+          python scripts/filter_virtual_vehicle_synthetic_with_anchors.py \
+            --synthetic work/lc/${{ matrix.tag }}/syn/synthetic_windows.npz \
+            --train-real work/lc/${{ matrix.tag }}/fold/train_real.npz \
+            --out work/lc/${{ matrix.tag }}/syn_task.npz \
+            --seed ${{ matrix.seed }} --temp-cap 150
+          python scripts/evaluate_virtual_vehicle_learning_curve_fold.py \
+            --fold-dir work/lc/${{ matrix.tag }}/fold \
+            --synthetic work/lc/${{ matrix.tag }}/syn_task.npz \
+            --out out/${{ matrix.tag }}.csv --seed ${{ matrix.seed }}
+          cp work/lc/${{ matrix.tag }}/fold/summary.json out/${{ matrix.tag }}_fold.json
+          cp work/lc/${{ matrix.tag }}/syn/report.json out/${{ matrix.tag }}_generator.json
+          cp work/lc/${{ matrix.tag }}/syn_task.json out/${{ matrix.tag }}_filter.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vv-lc-${{ matrix.tag }}
+          path: out/
+          retention-days: 2
+
+  aggregate:
+    needs: fold
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install pandas numpy
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: vv-lc-*
+          path: collected
+          merge-multiple: true
+      - name: Aggregate paired learning curve by held-out experiment
+        run: |
+          rm -rf reports/virtual_vehicle_experiment_count_learning_curve
+          mkdir -p reports/virtual_vehicle_experiment_count_learning_curve/fold_audits
+          cp collected/*_fold.json collected/*_generator.json collected/*_filter.json reports/virtual_vehicle_experiment_count_learning_curve/fold_audits/
+          python - <<'PY'
+          from pathlib import Path
+          import itertools
+          import numpy as np
+          import pandas as pd
+
+          src=Path('collected'); out=Path('reports/virtual_vehicle_experiment_count_learning_curve')
+          df=pd.concat([pd.read_csv(p) for p in sorted(src.glob('*.csv'))],ignore_index=True)
+          df.to_csv(out/'all_fold_metrics.csv',index=False)
+          macro=df.groupby(['k_real_train_experiments','method','representation']).agg(
+              auroc_mean=('auroc','mean'),auroc_worst=('auroc','min'),
+              auprc_mean=('auprc','mean'),auprc_worst=('auprc','min'),f1_mean=('f1','mean')).reset_index()
+          macro.to_csv(out/'macro_metrics.csv',index=False)
+
+          rows=[]
+          for k in (2,4,6):
+              for rep in ('fusion_absolute','temperature'):
+                  g=df[(df.k_real_train_experiments==k)&(df.representation==rep)]
+                  w=g.pivot(index='heldout',columns='method',values=['auroc','auprc'])
+                  for method in ('racdiff','classical_anchor_matched'):
+                      for met in ('auroc','auprc'):
+                          d=(w[(met,method)]-w[(met,'real_only')]).to_numpy(float)
+                          rng=np.random.default_rng(20260912+k)
+                          boots=np.array([rng.choice(d,size=len(d),replace=True).mean() for _ in range(20000)])
+                          vals=[]
+                          for signs in itertools.product((-1.0,1.0),repeat=len(d)):
+                              vals.append(np.mean(d*np.asarray(signs)))
+                          vals=np.asarray(vals); obs=abs(d.mean()); p=float(np.mean(np.abs(vals)>=obs-1e-12))
+                          rows.append({'k':k,'representation':rep,'method':method,'metric':met,
+                                       'mean_delta_vs_real':float(d.mean()),'ci_low':float(np.percentile(boots,2.5)),
+                                       'ci_high':float(np.percentile(boots,97.5)),'improved_experiments':int((d>0).sum()),
+                                       'n_experiments':len(d),'exact_signflip_p':p})
+          stats=pd.DataFrame(rows); stats.to_csv(out/'paired_deltas.csv',index=False)
+
+          primary=stats[(stats.representation=='fusion_absolute')&(stats.method=='racdiff')]
+          lines=['# Experiment-count learning curve for RA-CDiff','',
+                 'The prediction task, logistic learner, fusion representation, RA-CDiff configuration and exact-anchor classical comparator were frozen before scoring. The same eight held-out real experiments are paired across k=2,4,6; only the number of independent real source experiments changes.','',
+                 '## Primary fusion results','',
+                 '| real train experiments k | method | mean AUROC | worst AUROC | mean AUPRC | worst AUPRC |','|---:|---|---:|---:|---:|---:|']
+          for _,r in macro[macro.representation=='fusion_absolute'].sort_values(['k_real_train_experiments','method']).iterrows():
+              lines.append(f"| {int(r.k_real_train_experiments)} | {r.method} | {r.auroc_mean:.3f} | {r.auroc_worst:.3f} | {r.auprc_mean:.3f} | {r.auprc_worst:.3f} |")
+          lines += ['', '## RA-CDiff paired gain versus real-only','',
+                    '| k | metric | mean delta | 95% bootstrap CI | improved experiments | exact sign-flip p |','|---:|---|---:|---:|---:|---:|']
+          for _,r in primary.sort_values(['k','metric']).iterrows():
+              lines.append(f"| {int(r.k)} | {r.metric} | {r.mean_delta_vs_real:+.3f} | [{r.ci_low:+.3f}, {r.ci_high:+.3f}] | {int(r.improved_experiments)}/{int(r.n_experiments)} | {r.exact_signflip_p:.4f} |")
+          au=primary[primary.metric=='auroc'].sort_values('k')
+          deltas=au.mean_delta_vs_real.to_numpy(float)
+          monotonic=bool(len(deltas)==3 and deltas[0]>=deltas[1]>=deltas[2])
+          lines += ['', '## Scarcity-hypothesis diagnostic','',
+                    f'- AUROC gain decreases monotonically from k=2 to k=6: **{monotonic}**.',
+                    '- This is a predeclared descriptive mechanism check, not a license to retune k-specific augmentation ratios or generator settings.','',
+                    '## Guardrail','',
+                    'Independent statistical n is eight held-out destructive experiments at every k. Overlapping windows and synthetic variants do not increase n.']
+          (out/'README.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
+          print('\n'.join(lines))
+          PY
+      - name: Commit learning-curve result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/virtual_vehicle_experiment_count_learning_curve
+          git commit -m 'research: evaluate experiment-count augmentation learning curve'
+          git pull --rebase origin main
+          git push origin HEAD:main
