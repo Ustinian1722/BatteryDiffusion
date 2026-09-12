@@ -1,0 +1,41 @@
+name: Evaluate frozen external Zenodo transfer
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/evaluate_external_zenodo_transfer.py'
+      - 'reports/external_validation_protocol_freeze.md'
+      - '.github/workflows/evaluate-external-zenodo-transfer.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: python -m pip install numpy pandas scipy requests openpyxl scikit-learn
+      - name: Run frozen external validation
+        run: |
+          rm -rf reports/external_zenodo_transfer
+          python scripts/evaluate_external_zenodo_transfer.py --out reports/external_zenodo_transfer
+      - name: Commit external results
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/external_zenodo_transfer
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'research: add frozen Zenodo external transfer results'
+          git pull --rebase origin main
+          git push origin HEAD:main
