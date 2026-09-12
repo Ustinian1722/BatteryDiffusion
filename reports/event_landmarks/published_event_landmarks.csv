@@ -1,0 +1,5 @@
+experiment_id,level,form_factor,aging,vent_time_s,vtp_s,source,implied_peak_time_s
+A2,cell,pouch,fresh,1812.0,614.0,published,2426.0
+D1,cell,pouch,aged,1703.0,1037.0,published,2740.0
+M1,module,pouch,fresh,2137.0,478.0,published_cell1,2615.0
+M2,module,pouch,aged,1569.0,1039.0,published_cell1,2608.0
