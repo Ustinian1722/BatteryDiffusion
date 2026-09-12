@@ -1,0 +1,32 @@
+{
+  "heldout": "TS0330B",
+  "validation": "TS0330C",
+  "train_experiments": [
+    "TS0330A",
+    "TS0330D",
+    "TS0330E",
+    "TS0330F",
+    "TS0330G",
+    "TS0330H"
+  ],
+  "train_windows": 209,
+  "validation_windows": 33,
+  "test_windows": 38,
+  "models": [
+    "cnn",
+    "lstm",
+    "gru",
+    "tcn",
+    "transformer",
+    "cnn_lstm",
+    "attention_gru",
+    "tcn_transformer",
+    "lath_net"
+  ],
+  "seeds": [
+    2026,
+    2027,
+    2028
+  ],
+  "normalization": "training experiments only"
+}
