@@ -1,14 +1,18 @@
-# External Zenodo 13981390 — event-structure audit
+# External Zenodo 13981390 — published-event validation
 
-Temperature and pressure were aligned to a common 1 Hz time base for compatibility analysis. The source MAT files are downloaded only transiently in CI.
+Temperature and pressure were aligned to a common 1 Hz time base. The source MAT files are downloaded only transiently in CI.
 
-**Important:** the pressure-drop times below are algorithmic vent-like candidates, not published vent annotations. They must not be used as ground truth without source-paper verification.
+The companion open-access paper explicitly reports first venting at **2 h 51 min (10,260 s)** for NMC111 and **22 min 30 s (1,350 s)** for NMC811. These are source-provided labels, not labels inferred from our pressure signal.
 
-| experiment | duration | T peak | T-peak time | P peak | P-peak time | vent-like drop | drop→Tpeak |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| NMC111 | 11299s | 161.5°C | 11300s | 4.462 | 10258s | 10261s | 1039s |
-| NMC811 | 2922s | 356.0°C | 1692s | 4.660 | 1348s | 1350s | 342s |
+| experiment | published vent | vent T | detected pressure drop | error | pressure peak | overlap covers published TR? |
+|---|---:|---:|---:|---:|---:|---|
+| NMC111 | 10260s | 152°C | 10262s | +2s | 4.462 | no |
+| NMC811 | 1350s | 185°C | 1351s | +1s | 4.660 | yes |
+
+## Interpretation
+
+The independently derived strongest local pressure drop agrees with the published vent landmark to approximately the sampling resolution in both experiments. This materially strengthens their suitability as **external event-labeled thermo-pressure experiments**. NMC111 pressure recording ends before the paper-reported TR time, so it is suitable for pre-vent/vent studies but not for pressure behavior through the complete TR peak.
 
 ## Compatibility decision
 
-Both records are long enough for the current 256-s causal-window machinery and expose synchronized temperature + pressure after alignment. Because these are prismatic cells with different chemistry/apparatus from the Hanyang 2170 cohort, they are best used as cross-domain thermo-pressure validation rather than pooled as homogeneous training replicas.
+Both experiments support the current 256-s causal-window machinery and have authoritative first-vent labels. Because they are prismatic NMC111/NMC811 cells with different heating rates, SOCs and apparatus, they should be treated as external/domain-shift experiments rather than homogeneous replicas of the primary Hanyang cohort.
