@@ -1,0 +1,41 @@
+name: Evaluate Virtual Vehicle time-to-vent baseline
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/evaluate_virtual_vehicle_time_to_vent_baseline.py'
+      - 'reports/virtual_vehicle_time_to_vent_protocol_freeze.md'
+      - '.github/workflows/evaluate-virtual-vehicle-time-to-vent.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: python -m pip install numpy pandas requests remotezip openpyxl scikit-learn
+      - name: Run frozen real-only LOEO regression
+        run: |
+          rm -rf reports/virtual_vehicle_time_to_vent_baseline
+          python scripts/evaluate_virtual_vehicle_time_to_vent_baseline.py --out reports/virtual_vehicle_time_to_vent_baseline
+      - name: Commit baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/virtual_vehicle_time_to_vent_baseline
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'research: evaluate frozen time-to-vent real-only baseline'
+          git pull --rebase origin main
+          git push origin HEAD:main
